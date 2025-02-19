@@ -14,24 +14,22 @@
                                     { perror(msg); \
                                         exit(EXIT_FAILURE); }
 
-#define MAXOCTETS   150
+#define MAXOCTETS   500
 
 void init_tcp_socket(int *sd, char *remote_ip, u_int16_t remote_port){
-    struct sockaddr_in addr;
-    socklen_t addr_len = sizeof(addr);
+    struct sockaddr_in server_addr;
+    socklen_t server_addr_len = sizeof(server_addr);
     
-    *sd = socket(AF_INET, SOCK_DGRAM, 0);
+    *sd = socket(AF_INET, SOCK_STREAM, 0);
     CHECK_ERROR(*sd, -1, "Erreur socket non cree !!! \n");
-    
-    //preparation de l'adresse de la socket
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(remote_port);
-    addr.sin_addr.s_addr = inet_addr(remote_ip);
-    
-    //Affectation d'une adresse a la socket
-    int erreur = bind(*sd, (const struct sockaddr *) &addr, addr_len);
-    CHECK_ERROR(erreur, -1, "Erreur de bind !!! \n");
-    printf("Waiting for request...\n");
+
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(remote_port);
+    server_addr.sin_addr.s_addr = inet_addr(remote_ip);
+
+    int erreur = connect(*sd, (struct sockaddr *)&server_addr, server_addr_len);
+    CHECK_ERROR(erreur, -1, "Erreur de connexion !!!\n");
+    printf("Connected to server %s:%d\n", remote_ip, remote_port);
 }
 
 void handle_communication(int sd){
@@ -51,7 +49,6 @@ void handle_communication(int sd){
     CHECK_ERROR(nb_car, -1, "\nProblème de réception !!!\n");
     buff_reception[nb_car] = '\0';
     printf("Server sent: %s\n", buff_reception);
-    // need message handling there to print failure or success
 }
 
 int main(int argc, char *argv[]) {
