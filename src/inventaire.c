@@ -13,23 +13,30 @@
                                         exit(EXIT_FAILURE); }
 
 #define LOCALPORT   3000
-#define LOCALIP     "172.20.10.2"
-#define RBCPORT     6666
-#define RBCIP       "172.20.10.2"
 
-#define MAXOCTETS   150
+#define MAXOCTETS   500
 #define MAXCLIENTS  100
 
+#define STOCK_INIT  5
+
+pthread_mutex_t stock_mutex = PTHREAD_MUTEX_INITIALIZER;
+typedef struct {
+    int client_sd;
+    int * nb_rows;
+    int * nb_columns;
+    int *** stock;
+} thread_args_t;
+
 void init_stock(int ***stock, int nb_rows, int nb_columns);
-void print_stock(int *stock[5], int nb_rows, int nb_columns);
+void print_stock(int **stock, int nb_rows, int nb_columns);
 void add_row(int ***stock, int *nb_rows, int nb_columns, int nb_supplementary_rows);
 void add_column(int ***stock, int nb_rows, int *nb_columns, int nb_supplementary_columns);
-char * handle_request(int ***stock, int nb_rows, int nb_columns, const char *request);
+char * handle_request(int ***stock, int nb_rows, int nb_columns, const char *request, int client);
 char * parse_message(const char *request, int *L_n, int *L_x, int *L_y, int *count, int max_elements);
 char * modify_stock(int ***stock, int nb_rows, int nb_columns, int *rows, int *columns, int *values, int count);
 void free_stock(int **stock, int nb_rows);
 void init_tcp_socket(int *sd, char *local_ip, u_int16_t local_port);
-void *handle_client(void *client_socket);
+void *handle_client(void *arg);
 
 void init_stock(int ***stock, int nb_rows, int nb_columns) {
     *stock = (int **)malloc(nb_rows * sizeof(int *));
@@ -41,24 +48,40 @@ void init_stock(int ***stock, int nb_rows, int nb_columns) {
 
         // Initialize elements to 0
         for (int j = 0; j < nb_columns; j++) {
-            (*stock)[i][j] = 0;
+            (*stock)[i][j] = STOCK_INIT;
         }
     }
 }
 
-void print_stock(int *stock[5], int nb_rows, int nb_columns){
-    printf("\n");
-    for (int j=0; j<nb_columns; j++){
-        printf("\t%d", j+1);
+char *get_stock_string(int **stock, int nb_rows, int nb_columns) {
+    // Estimation de la taille nécessaire
+    int buffer_size = (nb_rows + 1) * (nb_columns + 1) * 10 + 100;
+    char *buffer = malloc(buffer_size);
+    CHECK_ERROR(buffer, NULL, "Failed to allocate memory for buffer");
+
+    char *ptr = buffer;
+    ptr += sprintf(ptr, "\n");
+
+    // Ligne des numéros de colonne
+    for (int j = 0; j < nb_columns; j++) {
+        ptr += sprintf(ptr, "\t%d", j + 1);
     }
-    printf("\n\n");
-    for (int i=0; i<nb_rows; i++){
-        printf("%d\t", i+1);
-        for (int j=0; j<nb_columns; j++){
-            printf("%d\t", stock[i][j]);
+    ptr += sprintf(ptr, "\n\n");
+
+    // Contenu de la grille
+    for (int i = 0; i < nb_rows; i++) {
+        ptr += sprintf(ptr, "%d\t", i + 1);
+        for (int j = 0; j < nb_columns; j++) {
+            ptr += sprintf(ptr, "%d\t", stock[i][j]);
         }
-        printf("\n");
+        ptr += sprintf(ptr, "\n");
     }
+
+    return buffer;
+}
+
+void print_stock(int **stock, int nb_rows, int nb_columns){
+    printf("%s", get_stock_string(stock, nb_rows, nb_columns));
 }
 
 void add_row(int ***stock, int *nb_rows, int nb_columns, int nb_supplementary_rows) {
@@ -93,12 +116,26 @@ void add_column(int ***stock, int nb_rows, int *nb_columns, int nb_supplementary
     (*nb_columns) = *nb_columns + nb_supplementary_columns; // Increment column count
 }
 
-char * handle_request(int ***stock, int nb_rows, int nb_columns, const char *request){
+// client is a boolean that indicates if the request is coming from a client or a stock manager
+char * handle_request(int ***stock, int nb_rows, int nb_columns, const char *request, int client){
     int max_elements = 50;
     int L_n[max_elements], L_x[max_elements], L_y[max_elements], count;
     char * return_parse_message = parse_message(request, L_n, L_x, L_y, &count, max_elements);
     if (return_parse_message != NULL) {
         return return_parse_message;
+    }
+
+    for (int i = 0; i < count; i++) {
+        // humans start counting from 1
+        L_x[i]--;
+        L_y[i]--;
+        if (client){
+            // clients do not add but remove stock
+            L_n[i] = - L_n[i];
+            if (L_n[i] > 0) {
+                return "Clients cannot add stock\n";
+            }
+        }
     }
 
     char * return_modify_stock_message = modify_stock(stock, nb_columns, nb_rows, L_x, L_y, L_n, count);
@@ -155,7 +192,7 @@ void init_tcp_socket(int *sd, char *local_ip, u_int16_t local_port){
     struct sockaddr_in addr;
     socklen_t addr_len = sizeof(addr);
     
-    *sd = socket(AF_INET, SOCK_DGRAM, 0);
+    *sd = socket(AF_INET, SOCK_STREAM, 0);
     CHECK_ERROR(*sd, -1, "Erreur socket non cree !!! \n");
     
     //preparation de l'adresse de la socket
@@ -166,45 +203,55 @@ void init_tcp_socket(int *sd, char *local_ip, u_int16_t local_port){
     //Affectation d'une adresse a la socket
     int erreur = bind(*sd, (const struct sockaddr *) &addr, addr_len);
     CHECK_ERROR(erreur, -1, "Erreur de bind !!! \n");
-    printf("Waiting for request...\n");
 }
 
-void *handle_client(void *client_socket) {
+void *handle_client(void *arg) {
     
-    int client_sd = *((int *)client_socket);
-    free(client_socket);
+    thread_args_t *args = (thread_args_t *)arg;
+    int client_sd = args->client_sd;
+    int *nb_rows = args->nb_rows;  // Récupère le pointeur vers nb_rows
+    int *nb_columns = args->nb_columns;  // Récupère le pointeur vers nb_columns
+    int ***stock = args->stock;  // Récupère le pointeur vers stock
+    free(args);  // Libère la mémoire de la structure allouée
 
     char buff_reception[MAXOCTETS + 1];
-    int nbcar;
+    int nb_car;
     char buff_emission[MAXOCTETS + 1];
 
     while (1) {
         // Réception du message de la part du lecteur
-        nbcar = recv(client_sd, buff_reception, MAXOCTETS, 0);
-        CHECK_ERROR(nbcar, -1, "\nProblème de réception !!!\n");
-        buff_reception[nbcar] = '\0';
-        printf("MSG RECU DU CLIENT : %s\n", buff_reception);
-
-        //vérification de la demande de déconnexion
-        if (strcmp(buff_emission, "exit") == 0 || strcmp(buff_reception, "exit") == 0){
-            CHECK_ERROR(close(client_sd), -1, "Erreur lors de la fermeture de la socket");
+        nb_car = recv(client_sd, buff_reception, MAXOCTETS, 0);
+        CHECK_ERROR(nb_car, -1, "\nProblème de réception !!!\n");
+        if (nb_car == 0) { // Si le client se déconnecte
             break;
         }
+        buff_reception[nb_car] = '\0';
 
-        printf("SERVEUR> ");
-        fgets(buff_emission, MAXOCTETS, stdin); // Lecture au clavier
-        buff_emission[strlen(buff_emission) - 1] = '\0';
-        nbcar = send(client_sd, buff_emission, strlen(buff_emission) + 1, 0);
-        CHECK_ERROR(nbcar, 0, "\nProblème d'émission !!!\n");
+        if (strcmp(buff_reception, "stock") == 0) {
+            strcpy(buff_emission, get_stock_string(*stock, *nb_rows, *nb_columns));
+        }
+        else {
+            pthread_mutex_lock(&stock_mutex);
+            char * message = handle_request(stock, *nb_rows, *nb_columns, buff_reception, 1);
+            pthread_mutex_unlock(&stock_mutex);
 
-        // Vérification de la demande de déconnexion
-        if (strcmp(buff_emission, "exit") == 0 || strcmp(buff_reception, "exit") == 0) {
-            CHECK_ERROR(close(client_sd), -1, "Erreur lors de la fermeture de la socket");
+            if (message != NULL) {
+                strcpy(buff_emission, message);
+            }
+            else {
+                strcpy(buff_emission, "Stock updated successfully\n");
+            }
+            
+        }
+
+        nb_car = send(client_sd, buff_emission, strlen(buff_emission) + 1, 0);
+        CHECK_ERROR(nb_car, -1, "\nProblème de réception !!!\n");
+        if (nb_car == 0) { // Si le client se déconnecte
             break;
         }
     }
 
-    close(client_sd);
+    CHECK_ERROR(close(client_sd), -1, "Erreur lors de la fermeture de la socket");
     return NULL;
 }
 
@@ -214,56 +261,43 @@ int main(int argc, char *argv[]) {
     int **stock;
 
     init_stock(&stock, nb_rows, nb_columns);
-    print_stock(stock, nb_rows, nb_columns);
-    // add_row(&stock, &nb_rows, nb_columns, 2);
-    // print_stock(stock, nb_rows, nb_columns);
-    // add_column(&stock, nb_rows, &nb_columns, 2);
-    // print_stock(stock, nb_rows, nb_columns);
-    // free_stock(stock, nb_rows);
 
-    char * request = "2_1.2,1_2.3,-1_3.4";
-    char * message = handle_request(&stock, nb_rows, nb_columns, request);
-    print_stock(stock, nb_rows, nb_columns);
-    if (message != NULL) {
-        printf("%s\n", message);
+    int se;
+
+    if (argc == 2){
+        init_tcp_socket(&se, argv[1], LOCALPORT);
+    } 
+    else if (argc == 3){ 
+        init_tcp_socket(&se, argv[1], (u_int16_t) atoi(argv[2]));
+    }
+    else {
+        fprintf(stderr, "Usage: %s <local_ip> [<local_port>]\n", argv[0]);
+        exit(EXIT_FAILURE);
     }
 
-    // int se ;
-    // struct sockaddr_in adrserveur;
-    // struct sockaddr_in adrclient;
-    // socklen_t adrclient_len = sizeof(adrclient);
-    // int erreur;
-    // int nbcar;
+    // Communication avec les clients
 
-    // se=socket(AF_INET, SOCK_STREAM, 0);
-    // CHECK_ERROR(se, -1, "Erreur socket non cree !!! \n");
-    // printf("N° de la socket : %d \n", se);
-    
-    // //preparation de l'adresse de la socket
-    // adrserveur.sin_family = AF_INET;
-    // if (argc==1) adrserveur.sin_port = htons(LOCALPORT);
-    // else adrserveur.sin_port = htons(atoi(argv[1]));
-    // adrserveur.sin_addr.s_addr = inet_addr(LOCALIP);
-    
-    // //Affectation d'une adresse a la socket
-    // erreur = bind(se, (const struct sockaddr *)&adrserveur, sizeof(adrserveur));
-    // CHECK_ERROR(erreur, -1, "Erreur de bind !!!\n");
-    
-    // listen(se, MAXCLIENTS);
-    // printf("En attente de connexion ...\n");
+    CHECK_ERROR(listen(se, MAXCLIENTS), -1, "Erreur de listen !!!\n");
 
-    // while (1) {
-    //     int client_sd = accept(se, (struct sockaddr *)&adrclient, &adrclient_len);
-    //     printf("N° de la socket de dialogue : %d\n", client_sd);
-    //     CHECK_ERROR(client_sd, -1, "Erreur de accept !!!\n");
+    struct sockaddr_in adrclient;
+    socklen_t adrclient_len = sizeof(adrclient);
 
-    //     pthread_t client_thread;
-    //     int *client_socket = (int *)malloc(sizeof(int));
-    //     *client_socket = client_sd;
-    //     pthread_create(&client_thread, NULL, handle_client, (void *)client_socket);
-    // }
+    while (1) {
+        int client_sd = accept(se, (struct sockaddr *)&adrclient, &adrclient_len);
+        CHECK_ERROR(client_sd, -1, "Erreur de accept !!!\n");
 
-    // close(se);
+        pthread_t client_thread;
+        thread_args_t *args = malloc(sizeof(thread_args_t));
+        args->nb_rows = &nb_rows;
+        args->nb_columns = &nb_columns;
+        args->client_sd = client_sd;
+        args->stock = &stock;
 
-    // exit(EXIT_SUCCESS);
+        pthread_create(&client_thread, NULL, handle_client, (void *)args);
+        pthread_detach(client_thread); // Évite les fuites mémoire
+    }
+
+    close(se);
+
+    exit(EXIT_SUCCESS);
 }
