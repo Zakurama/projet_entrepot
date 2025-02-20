@@ -215,22 +215,17 @@ void *handle_client(void *arg) {
     free(args);  // Libère la mémoire de la structure allouée
 
     char buff_reception[MAXOCTETS + 1];
-    int nbcar;
+    int nb_car;
     char buff_emission[MAXOCTETS + 1];
 
     while (1) {
         // Réception du message de la part du lecteur
-        nbcar = recv(client_sd, buff_reception, MAXOCTETS, 0);
-        CHECK_ERROR(nbcar, -1, "\nProblème de réception !!!\n");
-        if (nbcar == 0) { // Si le client se déconnecte
+        nb_car = recv(client_sd, buff_reception, MAXOCTETS, 0);
+        CHECK_ERROR(nb_car, -1, "\nProblème de réception !!!\n");
+        if (nb_car == 0) { // Si le client se déconnecte
             break;
         }
-        buff_reception[nbcar] = '\0';
-
-        //vérification de la demande de déconnexion
-        if (strcmp(buff_emission, "exit") == 0 || strcmp(buff_reception, "exit") == 0){
-            break;
-        }
+        buff_reception[nb_car] = '\0';
 
         if (strcmp(buff_reception, "stock") == 0) {
             strcpy(buff_emission, get_stock_string(*stock, *nb_rows, *nb_columns));
@@ -249,9 +244,9 @@ void *handle_client(void *arg) {
             
         }
 
-        nbcar = send(client_sd, buff_emission, strlen(buff_emission) + 1, 0);
-        CHECK_ERROR(nbcar, -1, "\nProblème de réception !!!\n");
-        if (nbcar == 0) { // Si le client se déconnecte
+        nb_car = send(client_sd, buff_emission, strlen(buff_emission) + 1, 0);
+        CHECK_ERROR(nb_car, -1, "\nProblème de réception !!!\n");
+        if (nb_car == 0) { // Si le client se déconnecte
             break;
         }
     }

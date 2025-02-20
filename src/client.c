@@ -42,11 +42,14 @@ void handle_communication(int sd){
     fgets(buff_emission, MAXOCTETS, stdin);
     buff_emission[strlen(buff_emission) - 1] = '\0';
     nb_car = send(sd, buff_emission, strlen(buff_emission) + 1, 0);
-    CHECK_ERROR(nb_car, 0, "\nProblème d'émission !!!\n");
+    CHECK_ERROR(nb_car, -1, "\nProblème d'émission !!!\n");
 
     // Réception du message du serveur
     nb_car = recv(sd, buff_reception, MAXOCTETS, 0);
     CHECK_ERROR(nb_car, -1, "\nProblème de réception !!!\n");
+    if (nb_car == 0) { // Si le serveur se déconnecte
+        exit(EXIT_SUCCESS);
+    }
     buff_reception[nb_car] = '\0';
     printf("Server sent: %s\n", buff_reception);
 }
