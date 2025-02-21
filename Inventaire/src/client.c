@@ -3,7 +3,6 @@
 #include <string.h>
 #include <stdint.h>
 
-#include "utils.h"
 #include "tcp.h"
 
 int main(int argc, char *argv[]) {
