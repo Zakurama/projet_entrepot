@@ -1,5 +1,5 @@
-#ifndef TCP_H
-#define TCP_H
+#ifndef _TCP_H
+#define _TCP_H
 
 #define MAXOCTETS   500
 #define MAXCLIENTS  100
@@ -9,6 +9,6 @@ int accept_client(int server_sd);
 void listen_to(int se);
 void send_message(int sd,char* message);
 void recev_message(int sd,char *buff_reception);
-void close_socket(int se);
+void close_socket(int *se);
 
 #endif

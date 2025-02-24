@@ -60,6 +60,6 @@ void recev_message(int sd,char *buff_reception){
     buff_reception[nb_car] = '\0';
 }
 
-void close_socket(int se){
-    CHECK_ERROR(close(se),-1,"Erreur lors de la fermeture de la socket\n");
+void close_socket(int *se){
+    CHECK_ERROR(close(*se),-1,"Erreur lors de la fermeture de la socket\n");
 }

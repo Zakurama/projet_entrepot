@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
+#include <sys/types.h>
 
 #include "utils.h"
 #include "tcp.h"
@@ -213,7 +214,7 @@ void *handle_client(void *arg) {
         }
         send_message(client_sd,buff_emission);
     }
-    close_socket(client_sd);
+    close_socket(&client_sd);
     return NULL;
 }
 
@@ -256,7 +257,7 @@ int main(int argc, char *argv[]) {
         pthread_detach(client_thread); // Évite les fuites mémoire
     }
 
-    close_socket(se);
+    close_socket(&se);
 
     exit(EXIT_SUCCESS);
 }
