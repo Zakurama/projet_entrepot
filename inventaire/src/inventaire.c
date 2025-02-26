@@ -62,7 +62,7 @@ void add_row(int ***stock, int *nb_rows, int nb_columns, int nb_supplementary_ro
     // Initialize new row to 0
     for (int i = 0; i < nb_supplementary_rows; i++) {
         for (int j = 0; j < nb_columns; j++) {
-            (*stock)[*nb_rows+i][j] = 0;
+            (*stock)[*nb_rows+i][j] = NEW_STOCK_INIT_VALUE;
         }
     }
 
@@ -74,7 +74,7 @@ void add_column(int ***stock, int nb_rows, int *nb_columns, int nb_supplementary
         (*stock)[i] = (int *)realloc((*stock)[i], (*nb_columns + nb_supplementary_columns) * sizeof(int));
         CHECK_ERROR((*stock)[i], NULL, "Failed to allocate memory for new column");
         for (int j = *nb_columns; j < *nb_columns + nb_supplementary_columns; j++)
-        (*stock)[i][j] = 0; // Initialize new column to 0
+        (*stock)[i][j] = NEW_STOCK_INIT_VALUE; // Initialize new column to 0
     }
 
     (*nb_columns) = *nb_columns + nb_supplementary_columns; // Increment column count

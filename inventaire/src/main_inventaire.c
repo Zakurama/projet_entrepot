@@ -31,6 +31,7 @@ int main(int argc, char *argv[]) {
     args->nb_columns = &nb_columns;
     args->stock = &stock;
     pthread_create(&manager_thread, NULL, stock_manager, (void*)args);
+    pthread_detach(manager_thread); // Évite les fuites mémoire
 
     while (1) {
         client_sd = accept_client(se);

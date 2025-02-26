@@ -13,6 +13,7 @@
 #define LOCALPORT   3000
 
 #define STOCK_INIT  5
+#define NEW_STOCK_INIT_VALUE 0
 
 typedef struct {
     int client_sd;
