@@ -8,12 +8,14 @@ CUNIT_LDFLAGS=$(shell PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) pkg-config --libs cunit
 
 all : bin/inventaire bin/client libs
 
-bin/inventaire: src/inventaire.c lib/tcp.so
+build/inventaire.o: src/inventaire.c
+	gcc -c $(CFLAGS) $(CPFLAGS) $^ -o $@
+
+bin/inventaire: src/main_inventaire.c build/inventaire.o lib/tcp.so
 	gcc $(CFLAGS) $(CPFLAGS) $(LDFLAGS) -lpthread $^ -o $@ 
 
 bin/client : src/client.c lib/tcp.so
 	gcc $(CFLAGS) $(CPFLAGS) $(LDFLAGS) $^ -o $@
-
 
 libs: lib/tcp.so
 
@@ -26,10 +28,10 @@ build/tcp-fpic.o: src/tcp.c
 tests: bin/test
 	bin/test
 
-bin/test: tests/test.c lib/tcp.so
+bin/test: tests/test.c build/inventaire.o lib/tcp.so
 	gcc $(CFLAGS) $(CPFLAGS) $(LDFLAGS) $(CUNIT_CFLAGS) $^ -o $@ $(CUNIT_LDFLAGS)
 
-clean:
+clean: clean-libs
 	rm -f bin/* build/*
 
 clean-libs:

@@ -1,34 +1,6 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <pthread.h>
-#include <sys/types.h>
-
-#include "utils.h"
-#include "tcp.h"
-
-#define LOCALPORT   3000
-
-#define STOCK_INIT  5
+#include "inventaire.h"
 
 pthread_mutex_t stock_mutex = PTHREAD_MUTEX_INITIALIZER;
-typedef struct {
-    int client_sd;
-    int * nb_rows;
-    int * nb_columns;
-    int *** stock;
-} thread_args_t;
-
-void init_stock(int ***stock, int nb_rows, int nb_columns);
-char *get_stock_string(int **stock, int nb_rows, int nb_columns) ;
-void print_stock(int **stock, int nb_rows, int nb_columns);
-void add_row(int ***stock, int *nb_rows, int nb_columns, int nb_supplementary_rows);
-void add_column(int ***stock, int nb_rows, int *nb_columns, int nb_supplementary_columns);
-char * handle_request(int ***stock, int nb_rows, int nb_columns, const char *request, int client);
-char * parse_message(const char *request, int *L_n, int *L_x, int *L_y, int *count, int max_elements);
-char * modify_stock(int ***stock, int nb_rows, int nb_columns, int *rows, int *columns, int *values, int count);
-void free_stock(int **stock, int nb_rows);
-void *handle_client(void *arg);
 
 void init_stock(int ***stock, int nb_rows, int nb_columns) {
     *stock = (int **)malloc(nb_rows * sizeof(int *));
@@ -244,7 +216,9 @@ void *stock_manager(void *arg) {
 
             fgets(command, sizeof(command), stdin);
             if (sscanf(command, "%d", &nb_supplementary_rows) == 1) {
+                pthread_mutex_lock(&stock_mutex);  // Verrouille l'accès au stock
                 add_row(stock, nb_rows, *nb_columns, nb_supplementary_rows);
+                pthread_mutex_unlock(&stock_mutex); // Déverrouille
                 printf("[Answer]  Rows added successfully!\n");
             } else {
                 printf("[Answer] Invalid input! Please enter a number.\n");
@@ -256,7 +230,9 @@ void *stock_manager(void *arg) {
 
             fgets(command, sizeof(command), stdin);
             if (sscanf(command, "%d", &nb_supplementary_columns) == 1) {
+                pthread_mutex_lock(&stock_mutex);  // Verrouille l'accès au stock
                 add_column(stock, *nb_rows, nb_columns, nb_supplementary_columns);
+                pthread_mutex_unlock(&stock_mutex); // Déverrouille
                 printf("[Answer] Columns added successfully!\n");  
             } else {  
                 printf("[Answer] Invalid input! Please enter a number.\n");  
@@ -289,55 +265,4 @@ void *stock_manager(void *arg) {
 
     }
     return NULL;
-}
-
-int main(int argc, char *argv[]) {
-    int nb_columns = 5;
-    int nb_rows = 5;
-    int **stock;
-
-    init_stock(&stock, nb_rows, nb_columns);
-
-    int se;
-    int client_sd;
-
-    if (argc == 2){
-        init_tcp_socket(&se, argv[1], LOCALPORT,1);
-    } 
-    else if (argc == 3){ 
-        init_tcp_socket(&se, argv[1], (u_int16_t) atoi(argv[2]),1);
-    }
-    else {
-        fprintf(stderr, "Usage: %s <local_ip> [<local_port>]\n", argv[0]);
-        exit(EXIT_FAILURE);
-    }
-
-    // Communication avec les clients
-
-    listen_to(se);
-
-    pthread_t manager_thread;
-    thread_args_t *args = malloc(sizeof(thread_args_t));
-    args->nb_rows = &nb_rows;
-    args->nb_columns = &nb_columns;
-    args->stock = &stock;
-    pthread_create(&manager_thread, NULL, stock_manager, (void*)args);
-
-    while (1) {
-        client_sd = accept_client(se);
-        
-        pthread_t client_thread;
-        thread_args_t *args = malloc(sizeof(thread_args_t));
-        args->nb_rows = &nb_rows;
-        args->nb_columns = &nb_columns;
-        args->client_sd = client_sd;
-        args->stock = &stock;
-
-        pthread_create(&client_thread, NULL, handle_client, (void *)args);
-        pthread_detach(client_thread); // Évite les fuites mémoire
-    }
-
-    close_socket(&se);
-
-    exit(EXIT_SUCCESS);
 }
