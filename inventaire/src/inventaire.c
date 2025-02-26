@@ -130,7 +130,7 @@ char * handle_request(int ***stock, int nb_rows, int nb_columns, const char *req
         }
     }
 
-    char * return_modify_stock_message = modify_stock(stock, nb_columns, nb_rows, L_x, L_y, L_n, count);
+    char * return_modify_stock_message = modify_stock(stock, nb_rows, nb_columns, L_x, L_y, L_n, count);
     if (return_modify_stock_message != NULL) {
         return return_modify_stock_message;
     }
@@ -218,6 +218,79 @@ void *handle_client(void *arg) {
     return NULL;
 }
 
+void *stock_manager(void *arg) {
+    thread_args_t *args = (thread_args_t *)arg;
+    int *nb_rows = args->nb_rows;  // Récupère le pointeur vers nb_rows
+    int *nb_columns = args->nb_columns;  // Récupère le pointeur vers nb_columns
+    int ***stock = args->stock;  // Récupère le pointeur vers stock
+    free(args);  // Libère la mémoire de la structure allouée
+
+    char command[MAXOCTETS];
+
+    while (1) {
+        printf("-----------------------------------------------------------------"); 
+        printf("\n[MANAGER]\nEnter a command : \n\t1.stock\n\t2.add_row\n\t3.add_column\n\t4.add_stock\n\t5.exit\n> ");
+        fgets(command, sizeof(command), stdin);
+        command[strcspn(command, "\n")] = 0; // Supprime le '\n'
+
+        if (strcmp(command, "1") == 0) {
+            printf("[Answer] Stock :\n");
+            print_stock(*stock, *nb_rows, *nb_columns);
+        }
+        else if (strcmp(command, "2") == 0) {
+            int nb_supplementary_rows;
+
+            printf("How many additional rows?\n> "); 
+
+            fgets(command, sizeof(command), stdin);
+            if (sscanf(command, "%d", &nb_supplementary_rows) == 1) {
+                add_row(stock, nb_rows, *nb_columns, nb_supplementary_rows);
+                printf("[Answer]  Rows added successfully!\n");
+            } else {
+                printf("[Answer] Invalid input! Please enter a number.\n");
+            }
+        } 
+        else if (strcmp(command, "3") == 0) {
+            int nb_supplementary_columns;
+            printf("How many additional columns?\n> ");
+
+            fgets(command, sizeof(command), stdin);
+            if (sscanf(command, "%d", &nb_supplementary_columns) == 1) {
+                add_column(stock, *nb_rows, nb_columns, nb_supplementary_columns);
+                printf("[Answer] Columns added successfully!\n");  
+            } else {  
+                printf("[Answer] Invalid input! Please enter a number.\n");  
+
+            }
+           
+        }
+        else if(strcmp(command, "4")==0){
+            printf("Enter the number_row.column (N_X.Y,...)\n> ");
+            fgets(command, sizeof(command), stdin);
+            command[strcspn(command, "\n")] = 0; // Supprime le '\n'
+            printf("Command : %s\n", command); 
+            pthread_mutex_lock(&stock_mutex);  // Verrouille l'accès au stock
+            char *response = handle_request(stock, *nb_rows, *nb_columns, command, 0 );
+            pthread_mutex_unlock(&stock_mutex); // Déverrouille
+
+            if (response != NULL) {
+                printf("[Answer] %s\n", response);
+            } else {
+                printf("[Answer] Stock updated successfully!\n");
+            }
+        }
+        else if (strcmp(command, "5") == 0) {
+            printf("[MANAGER] End of manager.\n");
+            pthread_exit(NULL);
+        }
+        else{
+            printf("Unknown command\n");
+        }
+
+    }
+    return NULL;
+}
+
 int main(int argc, char *argv[]) {
     int nb_columns = 5;
     int nb_rows = 5;
@@ -242,6 +315,13 @@ int main(int argc, char *argv[]) {
     // Communication avec les clients
 
     listen_to(se);
+
+    pthread_t manager_thread;
+    thread_args_t *args = malloc(sizeof(thread_args_t));
+    args->nb_rows = &nb_rows;
+    args->nb_columns = &nb_columns;
+    args->stock = &stock;
+    pthread_create(&manager_thread, NULL, stock_manager, (void*)args);
 
     while (1) {
         client_sd = accept_client(se);
