@@ -123,6 +123,39 @@ void test_handle_request_not_client(void){
     CU_ASSERT(stock[1][1] == STOCK_INIT + 1);
 }
 
+void test_handle_request_invalid_request(void) {
+    int **stock;
+    int nb_rows = 5;
+    int nb_columns = 7;
+    init_stock(&stock, nb_rows, nb_columns);
+    const char *request = "invalid_request";
+    char *response = handle_request(&stock, nb_rows, nb_columns, request, 1);
+    CU_ASSERT(response != NULL);
+    CU_ASSERT_STRING_EQUAL(response, "Invalid request format\n");
+}
+
+void test_handle_request_client_add_stock(void) {
+    int **stock;
+    int nb_rows = 5;
+    int nb_columns = 7;
+    init_stock(&stock, nb_rows, nb_columns);
+    const char *request = "-1_1.1,-1_2.2";
+    char *response = handle_request(&stock, nb_rows, nb_columns, request, 1);
+    CU_ASSERT(response != NULL);
+    CU_ASSERT_STRING_EQUAL(response, "Clients cannot add stock\n");
+}
+
+void test_handle_request_out_of_bounds(void) {
+    int **stock;
+    int nb_rows = 5;
+    int nb_columns = 7;
+    init_stock(&stock, nb_rows, nb_columns);
+    const char *request = "6_1.1,1_8.2";
+    char *response = handle_request(&stock, nb_rows, nb_columns, request, 0);
+    CU_ASSERT(response != NULL);
+    CU_ASSERT_STRING_EQUAL(response, "Invalid row or column index\n");
+}
+
 int main() {
     CU_pSuite pSuite = NULL;
 
@@ -171,6 +204,21 @@ int main() {
     }
 
     if (NULL == CU_add_test(pSuite, "test handle request not client", test_handle_request_not_client)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
+    if (NULL == CU_add_test(pSuite, "test handle request invalid request", test_handle_request_invalid_request)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
+    if (NULL == CU_add_test(pSuite, "test handle request client add stock", test_handle_request_client_add_stock)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
+    if (NULL == CU_add_test(pSuite, "test handle request out of bounds", test_handle_request_out_of_bounds)) {
         CU_cleanup_registry();
         return CU_get_error();
     }

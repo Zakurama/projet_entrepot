@@ -110,7 +110,7 @@ char * handle_request(int ***stock, int nb_rows, int nb_columns, const char *req
 }
 
 // message format: "N_X.Y,..." 
-char * parse_message(const char *request, int *L_n, int *L_x, int *L_y, int *count, int max_elements) {
+char *parse_message(const char *request, int *L_n, int *L_x, int *L_y, int *count, int max_elements) {
     *count = 0;  // Initialize count
 
     char temp[strlen(request) + 1];
@@ -119,9 +119,11 @@ char * parse_message(const char *request, int *L_n, int *L_x, int *L_y, int *cou
     char *token = strtok(temp, ",");
     while (token != NULL) {
         if (*count >= max_elements) {
-            return "Maximum number of elements exceeded, please reduce the number number to change\n";
+            return "Maximum number of elements exceeded, please reduce the number to change\n";
         }
-        sscanf(token, "%d_%d.%d", &L_n[*count], &L_x[*count], &L_y[*count]);
+        if (sscanf(token, "%d_%d.%d", &L_n[*count], &L_x[*count], &L_y[*count]) != 3) {
+            return "Invalid request format\n";
+        }
         (*count)++;
         token = strtok(NULL, ",");
     }
