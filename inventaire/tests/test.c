@@ -309,6 +309,36 @@ void test_add_item(void) {
     CU_ASSERT(items[1].quantity == 5);
 }
 
+void test_get_item_index(void) {
+    item_t items[2];
+    items[0].item_name = "item1";
+    items[1].item_name = "item2";
+    CU_ASSERT(get_item_index(items, 2, "item1") == 0);
+    CU_ASSERT(get_item_index(items, 2, "item2") == 1);
+    CU_ASSERT(get_item_index(items, 2, "item3") == -1);
+}
+
+void test_transfer_stock(void){
+    item_t items[2];
+    items[0].item_name = "item1";
+    items[1].item_name = "item2";
+    items[0].quantity = 5;
+    items[1].quantity = 5;
+    int nb_rows = 5;
+    int nb_columns = 7;
+    const char *item_placement = "5_1.1,5_2.2";
+    for (int i = 0; i < 2; i++) {
+        items[i].stock = NULL; // Ensure stock is initialized to NULL before allocation
+        init_stock(&items[i].stock, nb_rows, nb_columns, item_placement);
+    }
+    const char *item_names[2] = {"item1", "item2"};
+    char *response = transfer_stock(items, 2, nb_rows, nb_columns, item_names, 2);
+    free_stock(items[0].stock, nb_rows);
+    free_stock(items[1].stock, nb_rows);
+    printf("\n%s\n", response);
+    CU_ASSERT_STRING_EQUAL(response, "item1;5_1.1,5_2.2/item2;5_1.1,5_2.2");
+}
+
 int main() {
     CU_pSuite pSuite = NULL;
 
@@ -412,6 +442,16 @@ int main() {
     }
 
     if (NULL == CU_add_test(pSuite, "test add item", test_add_item)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
+    if (NULL == CU_add_test(pSuite, "test get item index", test_get_item_index)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
+    if (NULL == CU_add_test(pSuite, "test transfer stock", test_transfer_stock)) {
         CU_cleanup_registry();
         return CU_get_error();
     }

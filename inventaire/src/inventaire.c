@@ -176,7 +176,10 @@ char *check_client_request(const char *request, item_t *items, int nb_items, int
     return NULL;
 }
 
-// message format: "N_X.Y,..." 
+/* Parse the message and store the values in the arrays L_n, L_x, L_y
+ * The message format is "N_X.Y,N_X.Y,..."
+ * The function returns an error message if the message is not correctly formatted
+ */
 char *parse_message(const char *request, int *L_n, int *L_x, int *L_y, int *count, int max_elements) {
     *count = 0;  // Initialize count
 
@@ -195,6 +198,49 @@ char *parse_message(const char *request, int *L_n, int *L_x, int *L_y, int *coun
         token = strtok(NULL, ",");
     }
     return NULL;
+}
+
+/* Parse the message and store the values in the arrays L_n, L_x, L_y
+ * The message format is "itemName1;N_X.Y,N_X.Y,.../itemName2;N_X.Y,..."
+ * The function returns an error message if the message is not correctly formatted
+ */
+char *parse_item_message(){
+    return NULL;
+}
+
+/* Return a string in the format: "itemName1;N_X.Y,N_X.Y,.../itemName2;N_X.Y,..."
+ * The function returns an error message if the message is not correctly formatted
+ */
+char *transfer_stock(item_t *items, int nb_items, int nb_rows, int nb_columns, const char **item_names, int nb_items_request){
+    char *result = malloc(1000 * sizeof(char));
+    CHECK_ERROR(result, NULL, "Failed to allocate memory for result"); 
+    result[0] = '\0'; // Initialize the result buffer
+
+    for (int i = 0; i < nb_items_request; i++) {
+        int index = get_item_index(items, nb_items, item_names[i]);
+        if (index == -1) {
+            free(result);
+            return "Item not found\n";
+        }
+        else if (items[index].quantity == 0) {
+            free(result);
+            return "No stock available\n";
+        }
+        strcat(result, items[index].item_name);
+        strcat(result, ";");
+        for (int j = 0; j < nb_rows; j++) {
+            for (int k = 0; k < nb_columns; k++) {
+                if (items[index].stock[j][k] > 0) {
+                    char temp[100];
+                    snprintf(temp, 100, "%d_%d.%d,", items[index].stock[j][k], j+1, k+1); // humans start counting from 1
+                    strcat(result, temp);
+                }
+            }
+        }
+        result[strlen(result) - 1] = '/'; // Replace the last comma with a slash
+    }
+    result[strlen(result) - 1] = '\0'; // Remove the last slash
+    return result;
 }
 
 char * modify_stock(int ***stock, int nb_rows, int nb_columns, int *rows, int *columns, int *values, int count) {
