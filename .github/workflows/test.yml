@@ -1,0 +1,26 @@
+name: C Unit Tests
+
+on:
+  push:
+    branches:
+      - main  # Adjust this to match your default branch
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y build-essential pkg-config libcunit1-dev
+
+      - name: Build project
+        run: make -C inventaire
+
+      - name: Run tests
+        run: make -C inventaire tests
