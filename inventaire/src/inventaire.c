@@ -200,13 +200,92 @@ char *parse_message(const char *request, int *L_n, int *L_x, int *L_y, int *coun
     return NULL;
 }
 
-/* Parse the message and store the values in the arrays L_n, L_x, L_y
+/* 
  * The message format is "itemName1;N_X.Y,N_X.Y,.../itemName2;N_X.Y,..."
  * The function returns an error message if the message is not correctly formatted
  */
-char *parse_item_message(){
+char *handle_central_computer_message(item_t *items, int nb_items, int nb_rows, int nb_columns, const char *request) {
+    int max_elements = 50;
+    int item_index[max_elements];
+
+    int *L_n[max_elements];
+    int *L_x[max_elements];
+    int *L_y[max_elements];
+    int count[max_elements];
+
+    for (int i = 0; i < max_elements; i++) {
+        L_n[i] = malloc(max_elements * sizeof(int));
+        L_x[i] = malloc(max_elements * sizeof(int));
+        L_y[i] = malloc(max_elements * sizeof(int));
+        if (!L_n[i] || !L_x[i] || !L_y[i]) {
+            return "Memory allocation failed\n";
+        }
+    }
+
+    int count_items = 0;
+    char temp[strlen(request) + 1];
+    strcpy(temp, request);
+
+    char *item_token = strtok(temp, "/");
+    while (item_token != NULL) {
+        char item_token_copy[strlen(item_token) + 1];
+        strcpy(item_token_copy, item_token);
+        char *item_name = strtok(item_token_copy, ";");
+        char *positions = strtok(NULL, ";");
+
+        if (item_name == NULL || positions == NULL) {
+            return "Invalid request format\n";
+        }
+
+        item_index[count_items] = get_item_index(items, nb_items, item_name);
+        if (item_index[count_items] == -1) {
+            return "Item not found\n";
+        }
+
+        char *return_parse_message = parse_message(positions, L_n[count_items], L_x[count_items], L_y[count_items], &count[count_items], max_elements);
+        if (return_parse_message != NULL) {
+            return return_parse_message;
+        }
+
+        count_items++;
+        strcpy(temp, request);
+        item_token = strtok(temp, "/");
+        for (int i = 0; i < count_items; i++) {
+            item_token = strtok(NULL, "/");
+        }
+    }
+
+    for (int i = 0; i < count_items; i++) {
+       
+        // humans start counting from 1
+        for (int j = 0; j < count[i]; j++) {
+            L_x[i][j] -= 1;
+            L_y[i][j] -= 1;
+            if (L_x[i][j] < 0 || L_x[i][j] >= nb_rows || L_y[i][j] < 0 || L_y[i][j] >= nb_columns) {
+                return "Invalid row or column index\n";
+            }
+        }
+
+    }
+    for (int i = 0; i < count_items; i++) {
+        char *return_message = modify_stock(&(items[item_index[i]].stock), nb_rows, nb_columns, L_x[i], L_y[i], L_n[i], count[i]);
+
+        if (return_message != NULL) {
+            return return_message;
+        }
+        free(return_message);
+    }
+
+    // Free allocated memory
+    for (int i = 0; i < max_elements; i++) {
+        free(L_n[i]);
+        free(L_x[i]);
+        free(L_y[i]);
+    }
+
     return NULL;
 }
+
 
 /* Return a string in the format: "itemName1;N_X.Y,N_X.Y,.../itemName2;N_X.Y,..."
  * The function returns an error message if the message is not correctly formatted

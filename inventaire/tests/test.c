@@ -335,8 +335,120 @@ void test_transfer_stock(void){
     char *response = transfer_stock(items, 2, nb_rows, nb_columns, item_names, 2);
     free_stock(items[0].stock, nb_rows);
     free_stock(items[1].stock, nb_rows);
-    printf("\n%s\n", response);
     CU_ASSERT_STRING_EQUAL(response, "item1;5_1.1,5_2.2/item2;5_1.1,5_2.2");
+}
+
+void test_handle_central_computer_message_correct(void) {
+    item_t items[2];
+    items[0].item_name = "item1";
+    items[1].item_name = "item2";
+    items[0].quantity = 5;
+    items[1].quantity = 5;
+    int nb_rows = 5;
+    int nb_columns = 7;
+    const char *item_placement = "5_1.1,5_2.2";
+    for (int i = 0; i < 2; i++) {
+        items[i].stock = NULL;
+        init_stock(&items[i].stock, nb_rows, nb_columns, item_placement);
+    }
+    const char *request = "item1;1_1.1,1_2.2/item2;2_1.1,2_2.2";
+    char *response = handle_central_computer_message(items, 2, nb_rows, nb_columns, request);
+    CU_ASSERT(response == NULL);
+    CU_ASSERT(items[0].stock[0][0] == 6);
+    CU_ASSERT(items[0].stock[1][1] == 6);
+    CU_ASSERT(items[1].stock[0][0] == 7);
+    CU_ASSERT(items[1].stock[1][1] == 7);
+
+    for (int i = 0; i < 2; i++) {
+        free_stock(items[i].stock, nb_rows);
+    }
+}
+
+void test_handle_central_computer_message_invalid_format(void) {
+    item_t items[2];
+    items[0].item_name = "item1";
+    items[1].item_name = "item2";
+    items[0].quantity = 5;
+    items[1].quantity = 5;
+    int nb_rows = 5;
+    int nb_columns = 7;
+    const char *item_placement = "5_1.1,5_2.2";
+    for (int i = 0; i < 2; i++) {
+        items[i].stock = NULL;
+        init_stock(&items[i].stock, nb_rows, nb_columns, item_placement);
+    }
+    const char *request = "item1;1_1.1,1_2.2/item2";
+    char *response = handle_central_computer_message(items, 2, nb_rows, nb_columns, request);
+    CU_ASSERT(response != NULL);
+    CU_ASSERT_STRING_EQUAL(response, "Invalid request format\n");
+    for (int i = 0; i < 2; i++) {
+        free_stock(items[i].stock, nb_rows);
+    }
+}
+
+void test_handle_central_computer_message_item_not_found(void) {
+    item_t items[1];
+    items[0].item_name = "item1";
+    items[0].quantity = 5;
+    int nb_rows = 5;
+    int nb_columns = 7;
+    const char *item_placement = "5_1.1,5_2.2";
+    items[0].stock = NULL;
+    init_stock(&items[0].stock, nb_rows, nb_columns, item_placement);
+    const char *request = "item2;1_1.1,1_2.2";
+    char *response = handle_central_computer_message(items, 1, nb_rows, nb_columns, request);
+    CU_ASSERT(response != NULL);
+    CU_ASSERT_STRING_EQUAL(response, "Item not found\n");
+    free_stock(items[0].stock, nb_rows);
+}
+
+void test_handle_central_computer_message_parse_error(void) {
+    item_t items[2];
+    items[0].item_name = "item1";
+    items[1].item_name = "item2";
+    items[0].quantity = 5;
+    items[1].quantity = 5;
+    int nb_rows = 5;
+    int nb_columns = 7;
+    const char *item_placement = "5_1.1,5_2.2";
+    for (int i = 0; i < 2; i++) {
+        items[i].stock = NULL;
+        init_stock(&items[i].stock, nb_rows, nb_columns, item_placement);
+    }
+    const char *request = "item1;1_1.1,1_2.2/item2;invalid";
+    char *response = handle_central_computer_message(items, 2, nb_rows, nb_columns, request);
+    CU_ASSERT(response != NULL);
+    CU_ASSERT_STRING_EQUAL(response, "Invalid request format\n");
+    for (int i = 0; i < 2; i++) {
+        free_stock(items[i].stock, nb_rows);
+    }
+}
+
+void test_handle_central_computer_message_modify_stock_error(void) {
+    item_t items[2];
+    items[0].item_name = "item1";
+    items[1].item_name = "item2";
+    items[0].quantity = 5;
+    items[1].quantity = 5;
+    int nb_rows = 5;
+    int nb_columns = 7;
+    const char *item_placement = "5_1.1,5_2.2";
+    for (int i = 0; i < 2; i++) {
+        items[i].stock = NULL;
+        init_stock(&items[i].stock, nb_rows, nb_columns, item_placement);
+    }
+    const char *request = "item1;1_1.1,1_2.2/item2;1_6.1";
+    char *response = handle_central_computer_message(items, 2, nb_rows, nb_columns, request);
+    CU_ASSERT(response != NULL);
+    CU_ASSERT_STRING_EQUAL(response, "Invalid row or column index\n");
+    CU_ASSERT(items[0].stock[0][0] == 5);
+    CU_ASSERT(items[0].stock[1][1] == 5);
+    CU_ASSERT(items[1].stock[0][0] == 5);
+    CU_ASSERT(items[1].stock[1][1] == 5);
+
+    for (int i = 0; i < 2; i++) {
+        free_stock(items[i].stock, nb_rows);
+    }
 }
 
 int main() {
@@ -455,6 +567,32 @@ int main() {
         CU_cleanup_registry();
         return CU_get_error();
     }
+
+    if (NULL == CU_add_test(pSuite, "test handle central computer message correct", test_handle_central_computer_message_correct)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
+    if (NULL == CU_add_test(pSuite, "test handle central computer message invalid format", test_handle_central_computer_message_invalid_format)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
+    if (NULL == CU_add_test(pSuite, "test handle central computer message item not found", test_handle_central_computer_message_item_not_found)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
+    if (NULL == CU_add_test(pSuite, "test handle central computer message parse error", test_handle_central_computer_message_parse_error)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
+    if (NULL == CU_add_test(pSuite, "test handle central computer message modify stock error", test_handle_central_computer_message_modify_stock_error)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
 
     CU_basic_set_mode(CU_BRM_VERBOSE);
     CU_basic_run_tests();
