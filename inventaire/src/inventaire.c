@@ -2,17 +2,30 @@
 
 pthread_mutex_t stock_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-void init_stock(int ***stock, int nb_rows, int nb_columns) {
+void init_stock(int ***stock, int nb_rows, int nb_columns, const char *item_placement) {
+    int max_elements = 50;
+    int L_n[max_elements], L_x[max_elements], L_y[max_elements], count;
+
+    // We assume that the message is correctly formatted
+    parse_message(item_placement, L_n, L_x, L_y, &count, max_elements);
+    // humans start counting from 1
+    for (int i = 0; i < count; i++) {
+        L_x[i]--;
+        L_y[i]--;
+    }
+
+    // Allocate memory for the stock
     *stock = (int **)malloc(nb_rows * sizeof(int *));
     CHECK_ERROR(*stock, NULL, "Failed to allocate memory for rows");
-
     for (int i = 0; i < nb_rows; i++) {
         (*stock)[i] = (int *)malloc(nb_columns * sizeof(int));
         CHECK_ERROR((*stock)[i], NULL, "Failed to allocate memory for columns");
+    }
 
-        // Initialize elements to 0
-        for (int j = 0; j < nb_columns; j++) {
-            (*stock)[i][j] = STOCK_INIT;
+    // Place the stock items at the correct positions
+    for (int i = 0; i < count; i++) {
+        if (L_x[i] >= 0 && L_x[i] < nb_rows && L_y[i] >= 0 && L_y[i] < nb_columns) {
+            (*stock)[L_x[i]][L_y[i]] = L_n[i];
         }
     }
 }
@@ -48,36 +61,43 @@ void print_stock(int **stock, int nb_rows, int nb_columns){
     printf("%s", get_stock_string(stock, nb_rows, nb_columns));
 }
 
-void add_row(int ***stock, int *nb_rows, int nb_columns, int nb_supplementary_rows) {
-    *stock = (int **)realloc(*stock, (*nb_rows + nb_supplementary_rows) * sizeof(int *));
-    CHECK_ERROR(*stock, NULL, "Failed to allocate memory for new row");
+void add_row(item_t *items, int nb_items, int *nb_rows, int nb_columns, int nb_supplementary_rows) {
+    for (int k = 0; k < nb_items; k++) {
+        // Reallocate stock array for each item
+        items[k].stock = (int **)realloc(items[k].stock, (*nb_rows + nb_supplementary_rows) * sizeof(int *));
+        CHECK_ERROR(items[k].stock, NULL, "Failed to allocate memory for new rows");
 
-    // Allocate memory for the new rows
-    for (int i = 0; i < nb_supplementary_rows; i++){
-        (*stock)[*nb_rows + i] = (int *)malloc(nb_columns * sizeof(int));
-        CHECK_ERROR((*stock)[*nb_rows + i], NULL, "Failed to allocate memory for new row");
+        // Allocate and initialize new rows
+        for (int i = 0; i < nb_supplementary_rows; i++) {
+            items[k].stock[*nb_rows + i] = (int *)malloc(nb_columns * sizeof(int));
+            CHECK_ERROR(items[k].stock[*nb_rows + i], NULL, "Failed to allocate memory for new row");
+
+            for (int j = 0; j < nb_columns; j++) {
+                items[k].stock[*nb_rows + i][j] = NEW_STOCK_INIT_VALUE;
+            }
+        }
     }
     
+    // Update the number of rows
+    (*nb_rows) += nb_supplementary_rows;
+}
 
-    // Initialize new row to 0
-    for (int i = 0; i < nb_supplementary_rows; i++) {
-        for (int j = 0; j < nb_columns; j++) {
-            (*stock)[*nb_rows+i][j] = NEW_STOCK_INIT_VALUE;
+void add_column(item_t *items, int nb_items, int nb_rows, int *nb_columns, int nb_supplementary_columns) {
+    for (int k = 0; k < nb_items; k++) {
+        for (int i = 0; i < nb_rows; i++) {
+            // Reallocate each row to accommodate the new columns
+            items[k].stock[i] = (int *)realloc(items[k].stock[i], (*nb_columns + nb_supplementary_columns) * sizeof(int));
+            CHECK_ERROR(items[k].stock[i], NULL, "Failed to allocate memory for new columns");
+
+            // Initialize new columns with NEW_STOCK_INIT_VALUE
+            for (int j = *nb_columns; j < *nb_columns + nb_supplementary_columns; j++) {
+                items[k].stock[i][j] = NEW_STOCK_INIT_VALUE;
+            }
         }
     }
 
-    (*nb_rows) = *nb_rows + nb_supplementary_rows; // Increment row count
-}
-
-void add_column(int ***stock, int nb_rows, int *nb_columns, int nb_supplementary_columns) {
-    for (int i = 0; i < nb_rows; i++) {
-        (*stock)[i] = (int *)realloc((*stock)[i], (*nb_columns + nb_supplementary_columns) * sizeof(int));
-        CHECK_ERROR((*stock)[i], NULL, "Failed to allocate memory for new column");
-        for (int j = *nb_columns; j < *nb_columns + nb_supplementary_columns; j++)
-        (*stock)[i][j] = NEW_STOCK_INIT_VALUE; // Initialize new column to 0
-    }
-
-    (*nb_columns) = *nb_columns + nb_supplementary_columns; // Increment column count
+    // Update column count
+    (*nb_columns) += nb_supplementary_columns;
 }
 
 // client is a boolean that indicates if the request is coming from a client or a stock manager
@@ -105,6 +125,53 @@ char * handle_request(int ***stock, int nb_rows, int nb_columns, const char *req
     char * return_modify_stock_message = modify_stock(stock, nb_rows, nb_columns, L_x, L_y, L_n, count);
     if (return_modify_stock_message != NULL) {
         return return_modify_stock_message;
+    }
+    return NULL;
+}
+
+// message format: "itemName_N,itemName_N,..."
+char *check_client_request(const char *request, item_t *items, int nb_items, int max_elements) {
+    int count = 0;
+    char item_name[50];
+    int value;
+    char *item_names[max_elements];
+
+    char temp[strlen(request) + 1];
+    strcpy(temp, request); // Create a modifiable copy of the string
+
+    char *token = strtok(temp, ",");
+    while (token != NULL) {
+        if (count >= max_elements) {
+            return "Maximum number of elements exceeded, please reduce the number to change\n";
+        }
+
+        if (sscanf(token, "%[^_]_%d", item_name, &value) != 2) {
+            return "Invalid request format\n";
+        }
+        int index = get_item_index(items, nb_items, item_name);
+        if (index == -1) {
+            return "Item not found\n";
+        }
+        if (value < 0) {
+            return "Clients cannot add stock\n";
+        }
+        else if (items[index].quantity < value) {
+            char *error_message = (char *)malloc(100 * sizeof(char));
+            snprintf(error_message, 100, "Cannot take %d of stock %s at current value %d\n", value, item_name, items[index].quantity);
+            return error_message;
+        }
+
+        // Check if item_name is already in item_names
+        for (int i = 0; i < count; i++) {
+            if (strcmp(item_names[i], item_name) == 0) {
+                return "Duplicate item name in request\n";
+            }
+        }
+
+        // Store the item name
+        item_names[count] = strdup(item_name);
+        count++;
+        token = strtok(NULL, ",");
     }
     return NULL;
 }
@@ -219,7 +286,7 @@ void *stock_manager(void *arg) {
             fgets(command, sizeof(command), stdin);
             if (sscanf(command, "%d", &nb_supplementary_rows) == 1) {
                 pthread_mutex_lock(&stock_mutex);  // Verrouille l'accès au stock
-                add_row(stock, nb_rows, *nb_columns, nb_supplementary_rows);
+//                add_row(stock, nb_rows, *nb_columns, nb_supplementary_rows);
                 pthread_mutex_unlock(&stock_mutex); // Déverrouille
                 printf("[Answer]  Rows added successfully!\n");
             } else {
@@ -233,7 +300,7 @@ void *stock_manager(void *arg) {
             fgets(command, sizeof(command), stdin);
             if (sscanf(command, "%d", &nb_supplementary_columns) == 1) {
                 pthread_mutex_lock(&stock_mutex);  // Verrouille l'accès au stock
-                add_column(stock, *nb_rows, nb_columns, nb_supplementary_columns);
+//                add_column(stock, *nb_rows, nb_columns, nb_supplementary_columns);
                 pthread_mutex_unlock(&stock_mutex); // Déverrouille
                 printf("[Answer] Columns added successfully!\n");  
             } else {  
@@ -267,4 +334,27 @@ void *stock_manager(void *arg) {
 
     }
     return NULL;
+}
+
+void add_item(item_t **items, int *nb_items, item_t item) {
+    *items = (item_t *)realloc(*items, (*nb_items + 1) * sizeof(item_t));
+    CHECK_ERROR(*items, NULL, "Failed to allocate memory for new item");
+
+    (*items)[*nb_items].item_name = (char *)malloc(strlen(item.item_name) + 1);
+    CHECK_ERROR((*items)[*nb_items].item_name, NULL, "Failed to allocate memory for item name");
+
+    strcpy((*items)[*nb_items].item_name, item.item_name);
+    (*items)[*nb_items].stock = item.stock;
+    (*items)[*nb_items].quantity = item.quantity;
+
+    (*nb_items)++;
+}
+
+int get_item_index(item_t *items, int nb_items, const char *item_name) {
+    for (int i = 0; i < nb_items; i++) {
+        if (strcmp(items[i].item_name, item_name) == 0) {
+            return i;
+        }
+    }
+    return -1;
 }
