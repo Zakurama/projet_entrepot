@@ -15,18 +15,20 @@
 #define STOCK_INIT  5
 #define NEW_STOCK_INIT_VALUE 0
 
-typedef struct {
-    int client_sd;
-    int * nb_rows;
-    int * nb_columns;
-    int *** stock;
-} thread_args_t;
-
 typedef struct{
     char *item_name;
     int **stock;
     int quantity;
 } item_t;
+
+typedef struct {
+    int client_sd;
+    int computer_sd;
+    int * nb_rows;
+    int * nb_columns;
+    item_t ** items;
+    int * nb_items;
+} thread_args_t;
 
 void init_stock(int ***stock, int nb_rows, int nb_columns, const char *item_placement);
 char *get_stock_string(int **stock, int nb_rows, int nb_columns) ;
@@ -43,6 +45,7 @@ char *check_client_request(const char *request, item_t *items, int nb_items, int
 int get_item_index(item_t *items, int nb_items, const char *item_name);
 void add_item(item_t **items, int *nb_items, item_t item);
 char *transfer_stock(item_t *items, int nb_items, int nb_rows, int nb_columns, const char **item_names, int nb_items_request);
-char *handle_central_computer_message(item_t *items, int nb_items, int nb_rows, int nb_columns, const char *request);
+char *handle_items_request(item_t *items, int nb_items, int nb_rows, int nb_columns, const char *request, int central_coputer);
+char **parse_items_names(item_t *items, int nb_items, const char *request, int *nb_items_request);
 
 #endif

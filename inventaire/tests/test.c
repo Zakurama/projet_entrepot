@@ -338,7 +338,7 @@ void test_transfer_stock(void){
     CU_ASSERT_STRING_EQUAL(response, "item1;5_1.1,5_2.2/item2;5_1.1,5_2.2");
 }
 
-void test_handle_central_computer_message_correct(void) {
+void test_handle_items_request_correct(void) {
     item_t items[2];
     items[0].item_name = "item1";
     items[1].item_name = "item2";
@@ -352,7 +352,7 @@ void test_handle_central_computer_message_correct(void) {
         init_stock(&items[i].stock, nb_rows, nb_columns, item_placement);
     }
     const char *request = "item1;1_1.1,1_2.2/item2;2_1.1,2_2.2";
-    char *response = handle_central_computer_message(items, 2, nb_rows, nb_columns, request);
+    char *response = handle_items_request(items, 2, nb_rows, nb_columns, request, 0);
     CU_ASSERT(response == NULL);
     CU_ASSERT(items[0].stock[0][0] == 6);
     CU_ASSERT(items[0].stock[1][1] == 6);
@@ -364,7 +364,33 @@ void test_handle_central_computer_message_correct(void) {
     }
 }
 
-void test_handle_central_computer_message_invalid_format(void) {
+void test_handle_items_request_correct_not_central_computer(void) {
+    item_t items[2];
+    items[0].item_name = "item1";
+    items[1].item_name = "item2";
+    items[0].quantity = 5;
+    items[1].quantity = 5;
+    int nb_rows = 5;
+    int nb_columns = 7;
+    const char *item_placement = "5_1.1,5_2.2";
+    for (int i = 0; i < 2; i++) {
+        items[i].stock = NULL;
+        init_stock(&items[i].stock, nb_rows, nb_columns, item_placement);
+    }
+    const char *request = "item1;1_1.1,1_2.2/item2;2_1.1,2_2.2";
+    char *response = handle_items_request(items, 2, nb_rows, nb_columns, request, 1);
+    CU_ASSERT(response == NULL);
+    CU_ASSERT(items[0].stock[0][0] == 4);
+    CU_ASSERT(items[0].stock[1][1] == 4);
+    CU_ASSERT(items[1].stock[0][0] == 3);
+    CU_ASSERT(items[1].stock[1][1] == 3);
+
+    for (int i = 0; i < 2; i++) {
+        free_stock(items[i].stock, nb_rows);
+    }
+}
+
+void test_handle_items_request_invalid_format(void) {
     item_t items[2];
     items[0].item_name = "item1";
     items[1].item_name = "item2";
@@ -378,7 +404,7 @@ void test_handle_central_computer_message_invalid_format(void) {
         init_stock(&items[i].stock, nb_rows, nb_columns, item_placement);
     }
     const char *request = "item1;1_1.1,1_2.2/item2";
-    char *response = handle_central_computer_message(items, 2, nb_rows, nb_columns, request);
+    char *response = handle_items_request(items, 2, nb_rows, nb_columns, request, 0);
     CU_ASSERT(response != NULL);
     CU_ASSERT_STRING_EQUAL(response, "Invalid request format\n");
     for (int i = 0; i < 2; i++) {
@@ -386,7 +412,7 @@ void test_handle_central_computer_message_invalid_format(void) {
     }
 }
 
-void test_handle_central_computer_message_item_not_found(void) {
+void test_handle_items_request_item_not_found(void) {
     item_t items[1];
     items[0].item_name = "item1";
     items[0].quantity = 5;
@@ -396,13 +422,13 @@ void test_handle_central_computer_message_item_not_found(void) {
     items[0].stock = NULL;
     init_stock(&items[0].stock, nb_rows, nb_columns, item_placement);
     const char *request = "item2;1_1.1,1_2.2";
-    char *response = handle_central_computer_message(items, 1, nb_rows, nb_columns, request);
+    char *response = handle_items_request(items, 1, nb_rows, nb_columns, request, 1);
     CU_ASSERT(response != NULL);
     CU_ASSERT_STRING_EQUAL(response, "Item not found\n");
     free_stock(items[0].stock, nb_rows);
 }
 
-void test_handle_central_computer_message_parse_error(void) {
+void test_handle_items_request_parse_error(void) {
     item_t items[2];
     items[0].item_name = "item1";
     items[1].item_name = "item2";
@@ -416,7 +442,7 @@ void test_handle_central_computer_message_parse_error(void) {
         init_stock(&items[i].stock, nb_rows, nb_columns, item_placement);
     }
     const char *request = "item1;1_1.1,1_2.2/item2;invalid";
-    char *response = handle_central_computer_message(items, 2, nb_rows, nb_columns, request);
+    char *response = handle_items_request(items, 2, nb_rows, nb_columns, request, 0);
     CU_ASSERT(response != NULL);
     CU_ASSERT_STRING_EQUAL(response, "Invalid request format\n");
     for (int i = 0; i < 2; i++) {
@@ -424,7 +450,7 @@ void test_handle_central_computer_message_parse_error(void) {
     }
 }
 
-void test_handle_central_computer_message_modify_stock_error(void) {
+void test_handle_items_request_modify_stock_error(void) {
     item_t items[2];
     items[0].item_name = "item1";
     items[1].item_name = "item2";
@@ -438,7 +464,7 @@ void test_handle_central_computer_message_modify_stock_error(void) {
         init_stock(&items[i].stock, nb_rows, nb_columns, item_placement);
     }
     const char *request = "item1;1_1.1,1_2.2/item2;1_6.1";
-    char *response = handle_central_computer_message(items, 2, nb_rows, nb_columns, request);
+    char *response = handle_items_request(items, 2, nb_rows, nb_columns, request, 0);
     CU_ASSERT(response != NULL);
     CU_ASSERT_STRING_EQUAL(response, "Invalid row or column index\n");
     CU_ASSERT(items[0].stock[0][0] == 5);
@@ -448,6 +474,71 @@ void test_handle_central_computer_message_modify_stock_error(void) {
 
     for (int i = 0; i < 2; i++) {
         free_stock(items[i].stock, nb_rows);
+    }
+}
+
+void test_parse_items_names_correct(void) {
+    item_t items[2];
+    items[0].item_name = "item1";
+    items[1].item_name = "item2";
+    const char *request = "item1;1_1.1,1_2.2/item2;2_1.1,2_2.2";
+    int nb_items_request;
+    char **item_names = parse_items_names(items, 2, request, &nb_items_request);
+    CU_ASSERT(item_names != NULL);
+    CU_ASSERT(nb_items_request == 2);
+    CU_ASSERT_STRING_EQUAL(item_names[0], "item1");
+    CU_ASSERT_STRING_EQUAL(item_names[1], "item2");
+    for (int i = 0; i < nb_items_request; i++) {
+        free(item_names[i]);
+    }
+    free(item_names);
+}
+
+void test_parse_items_names_invalid_format(void) {
+    item_t items[2];
+    items[0].item_name = "item1";
+    items[1].item_name = "item2";
+    const char *request = "item1;1_1.1,1_2.2/item2;2_1.1,2_2.2";
+    int nb_items_request;
+    char **item_names = parse_items_names(items, 2, request, &nb_items_request);
+    CU_ASSERT_NOT_EQUAL(item_names, NULL);
+    CU_ASSERT_EQUAL(nb_items_request, 2);
+    if (item_names != NULL){
+        CU_ASSERT_STRING_EQUAL(item_names[0], "item1");
+        CU_ASSERT_STRING_EQUAL(item_names[1], "item2")
+    }
+}
+
+void test_parse_items_names_empty_request(void) {
+    item_t items[2];
+    items[0].item_name = "item1";
+    items[1].item_name = "item2";
+    const char *request = "";
+    int nb_items_request;
+    char **item_names = parse_items_names(items, 2, request, &nb_items_request);
+    CU_ASSERT(item_names == NULL);
+}
+
+void test_parse_items_names_exceed_max_items(void) {
+    item_t items[51];
+    for (int i = 0; i < 51; i++) {
+        items[i].item_name = malloc(10);
+        sprintf(items[i].item_name, "item%d", i + 1);
+    }
+    char request[1024] = "";
+    for (int i = 0; i < 51; i++) {
+        char temp[20];
+        sprintf(temp, "item%d;1_1.1", i + 1);
+        strcat(request, temp);
+        if (i < 50) {
+            strcat(request, "/");
+        }
+    }
+    int nb_items_request;
+    char **item_names = parse_items_names(items, 51, request, &nb_items_request);
+    CU_ASSERT(item_names == NULL);
+    for (int i = 0; i < 51; i++) {
+        free(items[i].item_name);
     }
 }
 
@@ -568,27 +659,52 @@ int main() {
         return CU_get_error();
     }
 
-    if (NULL == CU_add_test(pSuite, "test handle central computer message correct", test_handle_central_computer_message_correct)) {
+    if (NULL == CU_add_test(pSuite, "test handle items request correct", test_handle_items_request_correct)) {
         CU_cleanup_registry();
         return CU_get_error();
     }
 
-    if (NULL == CU_add_test(pSuite, "test handle central computer message invalid format", test_handle_central_computer_message_invalid_format)) {
+    if (NULL == CU_add_test(pSuite, "test handle items request correct not central computer", test_handle_items_request_correct_not_central_computer)) {
         CU_cleanup_registry();
         return CU_get_error();
     }
 
-    if (NULL == CU_add_test(pSuite, "test handle central computer message item not found", test_handle_central_computer_message_item_not_found)) {
+    if (NULL == CU_add_test(pSuite, "test handle items request invalid format", test_handle_items_request_invalid_format)) {
         CU_cleanup_registry();
         return CU_get_error();
     }
 
-    if (NULL == CU_add_test(pSuite, "test handle central computer message parse error", test_handle_central_computer_message_parse_error)) {
+    if (NULL == CU_add_test(pSuite, "test handle items request item not found", test_handle_items_request_item_not_found)) {
         CU_cleanup_registry();
         return CU_get_error();
     }
 
-    if (NULL == CU_add_test(pSuite, "test handle central computer message modify stock error", test_handle_central_computer_message_modify_stock_error)) {
+    if (NULL == CU_add_test(pSuite, "test handle items request parse error", test_handle_items_request_parse_error)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
+    if (NULL == CU_add_test(pSuite, "test handle items request modify stock error", test_handle_items_request_modify_stock_error)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
+    if (NULL == CU_add_test(pSuite, "test parse items names correct", test_parse_items_names_correct)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
+    if (NULL == CU_add_test(pSuite, "test parse items names invalid format", test_parse_items_names_invalid_format)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
+    if (NULL == CU_add_test(pSuite, "test parse items names empty request", test_parse_items_names_empty_request)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
+    if (NULL == CU_add_test(pSuite, "test parse items names exceed max items", test_parse_items_names_exceed_max_items)) {
         CU_cleanup_registry();
         return CU_get_error();
     }

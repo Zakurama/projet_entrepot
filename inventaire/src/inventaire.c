@@ -203,8 +203,9 @@ char *parse_message(const char *request, int *L_n, int *L_x, int *L_y, int *coun
 /* 
  * The message format is "itemName1;N_X.Y,N_X.Y,.../itemName2;N_X.Y,..."
  * The function returns an error message if the message is not correctly formatted
+ * central_computer is a boolean that indicates if the request is coming from the central computer
  */
-char *handle_central_computer_message(item_t *items, int nb_items, int nb_rows, int nb_columns, const char *request) {
+char *handle_items_request(item_t *items, int nb_items, int nb_rows, int nb_columns, const char *request, int central_computer) {
     int max_elements = 50;
     int item_index[max_elements];
 
@@ -234,16 +235,22 @@ char *handle_central_computer_message(item_t *items, int nb_items, int nb_rows, 
         char *positions = strtok(NULL, ";");
 
         if (item_name == NULL || positions == NULL) {
+            // Free allocated memory
+            for (int i = 0; i < max_elements; i++) {free(L_n[i]);free(L_x[i]);free(L_y[i]);}
             return "Invalid request format\n";
         }
 
         item_index[count_items] = get_item_index(items, nb_items, item_name);
         if (item_index[count_items] == -1) {
+            // Free allocated memory
+            for (int i = 0; i < max_elements; i++) {free(L_n[i]);free(L_x[i]);free(L_y[i]);}
             return "Item not found\n";
         }
 
         char *return_parse_message = parse_message(positions, L_n[count_items], L_x[count_items], L_y[count_items], &count[count_items], max_elements);
         if (return_parse_message != NULL) {
+            // Free allocated memory
+            for (int i = 0; i < max_elements; i++) {free(L_n[i]);free(L_x[i]);free(L_y[i]);}
             return return_parse_message;
         }
 
@@ -262,30 +269,34 @@ char *handle_central_computer_message(item_t *items, int nb_items, int nb_rows, 
             L_x[i][j] -= 1;
             L_y[i][j] -= 1;
             if (L_x[i][j] < 0 || L_x[i][j] >= nb_rows || L_y[i][j] < 0 || L_y[i][j] >= nb_columns) {
+                // Free allocated memory
+                for (int i = 0; i < max_elements; i++) {free(L_n[i]);free(L_x[i]);free(L_y[i]);}
                 return "Invalid row or column index\n";
             }
         }
 
     }
     for (int i = 0; i < count_items; i++) {
+        if (central_computer){
+            for (int j = 0; j < count[i]; j++) {
+                L_n[i][j] = -L_n[i][j];
+            }
+        }
         char *return_message = modify_stock(&(items[item_index[i]].stock), nb_rows, nb_columns, L_x[i], L_y[i], L_n[i], count[i]);
 
         if (return_message != NULL) {
+            // Free allocated memory
+            for (int i = 0; i < max_elements; i++) {free(L_n[i]);free(L_x[i]);free(L_y[i]);}
             return return_message;
         }
         free(return_message);
     }
 
     // Free allocated memory
-    for (int i = 0; i < max_elements; i++) {
-        free(L_n[i]);
-        free(L_x[i]);
-        free(L_y[i]);
-    }
+    for (int i = 0; i < max_elements; i++) {free(L_n[i]);free(L_x[i]);free(L_y[i]);}
 
     return NULL;
 }
-
 
 /* Return a string in the format: "itemName1;N_X.Y,N_X.Y,.../itemName2;N_X.Y,..."
  * The function returns an error message if the message is not correctly formatted
@@ -322,6 +333,58 @@ char *transfer_stock(item_t *items, int nb_items, int nb_rows, int nb_columns, c
     return result;
 }
 
+/* 
+ * The message format is "itemName1;N_X.Y,N_X.Y,.../itemName2;N_X.Y,..."
+ * The function returns NULL if the message is not correctly formatted
+ * else returns the items names
+ */
+char **parse_items_names(item_t *items, int nb_items, const char *request, int *nb_items_request) {
+    int max_items = 50;
+    if (request == NULL || *request == '\0') {  // Handle empty input
+        return NULL;
+    }
+
+    char **item_names = malloc(max_items * sizeof(char *));
+    CHECK_ERROR(item_names, NULL, "Failed to allocate memory for item names");
+
+    char temp[strlen(request) + 1];
+    strcpy(temp, request);
+
+    char *token = strtok(temp, "/");
+    int count = 0;
+    while (token != NULL) {
+        if (count >= max_items) {  // Prevent exceeding limit
+            for (int i = 0; i < count; i++) {
+                free(item_names[i]);
+            }
+            free(item_names);
+            return NULL;
+        }
+
+        char item_name[50];
+        if (sscanf(token, "%[^;]", item_name) != 1) {
+            for (int i = 0; i < count; i++) {
+                free(item_names[i]);
+            }
+            free(item_names);
+            return NULL;
+        }
+        item_names[count] = strdup(item_name);
+        if (item_names[count] == NULL) {
+            for (int i = 0; i < count; i++) {
+                free(item_names[i]);
+            }
+            free(item_names);
+            return NULL;
+        }
+        count++;
+        token = strtok(NULL, "/");
+    }
+
+    *nb_items_request = count;
+    return item_names;
+}
+
 char * modify_stock(int ***stock, int nb_rows, int nb_columns, int *rows, int *columns, int *values, int count) {
     for (int i = 0; i < count; i++) {
         if (rows[i] < 0 || rows[i] >= nb_rows || columns[i] < 0 || columns[i] >= nb_columns) {
@@ -352,29 +415,57 @@ void *handle_client(void *arg) {
     int client_sd = args->client_sd;
     int *nb_rows = args->nb_rows;  // Récupère le pointeur vers nb_rows
     int *nb_columns = args->nb_columns;  // Récupère le pointeur vers nb_columns
-    int ***stock = args->stock;  // Récupère le pointeur vers stock
+    item_t ** items = args->items;  // Récupère le pointeur vers items
+    int * nb_items = args->nb_items;  // Récupère le pointeur vers nb_items
+    int computer_sd = args->computer_sd;
     free(args);  // Libère la mémoire de la structure allouée
 
-    char buff_reception[MAXOCTETS + 1];
-    char buff_emission[MAXOCTETS + 1];
+    char buff_reception[MAXOCTETS + 1] = "";
+    char buff_emission[MAXOCTETS + 1] = "";
 
     while (1) {
         // Réception du message de la part du lecteur
         recev_message(client_sd,buff_reception);
 
         if (strcmp(buff_reception, "stock") == 0) {
-            strcpy(buff_emission, get_stock_string(*stock, *nb_rows, *nb_columns));
+            for (int i = 0; i < *nb_items; i++) {
+                char temp[100];
+                sprintf(temp, "%s: %d\n", items[i]->item_name, items[i]->quantity);
+                strcat(buff_emission, temp);
+            }
+            send_message(client_sd,buff_emission);
+            // strcpy(buff_emission, get_stock_string(*stock, *nb_rows, *nb_columns));
         }
         else {
-            pthread_mutex_lock(&stock_mutex);
-            char * message = handle_request(stock, *nb_rows, *nb_columns, buff_reception, 1);
-            pthread_mutex_unlock(&stock_mutex);
+            // pthread_mutex_lock(&stock_mutex);
+            char * message = check_client_request(buff_reception, *items, *nb_items, 50);
+            // pthread_mutex_unlock(&stock_mutex);
 
             if (message != NULL) {
                 strcpy(buff_emission, message);
             }
             else {
-                strcpy(buff_emission, "Stock updated successfully\n");
+                
+                // temporary until the central computer is implemented
+                strcpy(buff_emission, "Sending request to central computer\n");
+
+                // send_message(computer_sd, buff_reception);
+                // char **item_names;
+                // int nb_items_request;
+                // item_names = parse_items_names(*items, *nb_items, buff_reception, &nb_items_request);
+                // strcpy(buff_emission, transfer_stock(*items, *nb_items, *nb_rows, *nb_columns, item_names, nb_items_request));
+                // send_message(computer_sd ,buff_emission);
+
+                // recev_message(computer_sd, buff_reception);
+                // pthread_mutex_lock(&stock_mutex);
+                // char *response = handle_items_request(*items, *nb_items, *nb_rows, *nb_columns, buff_reception, 1);
+                // pthread_mutex_unlock(&stock_mutex);
+                // if (response != NULL) {
+                //     strcpy(buff_emission, response);
+                // } else {
+                //     strcpy(buff_emission, "Stock updated successfully\n");
+                // }
+
             }
             
         }
@@ -388,7 +479,8 @@ void *stock_manager(void *arg) {
     thread_args_t *args = (thread_args_t *)arg;
     int *nb_rows = args->nb_rows;  // Récupère le pointeur vers nb_rows
     int *nb_columns = args->nb_columns;  // Récupère le pointeur vers nb_columns
-    int ***stock = args->stock;  // Récupère le pointeur vers stock
+    item_t **items = args->items;  // Récupère le pointeur vers items
+    int *nb_items = args->nb_items;  // Récupère le pointeur vers nb_items
     free(args);  // Libère la mémoire de la structure allouée
 
     char command[MAXOCTETS];
@@ -400,8 +492,16 @@ void *stock_manager(void *arg) {
         command[strcspn(command, "\n")] = 0; // Supprime le '\n'
 
         if (strcmp(command, "1") == 0) {
-            printf("[Answer] Stock :\n");
-            print_stock(*stock, *nb_rows, *nb_columns);
+            printf("[MANAGER] Wich item :\n");
+            fgets(command, sizeof(command), stdin);
+            command[strcspn(command, "\n")] = 0; // Supprime le '\n'
+            if (get_item_index(*items, *nb_items, command) == -1) {
+                printf("[Answer] Item not found\n");
+                
+            } else {
+                printf("[Answer] Stock :\n");
+                print_stock((*items)[get_item_index(*items, *nb_items, command)].stock, *nb_rows, *nb_columns);
+            }
         }
         else if (strcmp(command, "2") == 0) {
             int nb_supplementary_rows;
@@ -411,7 +511,7 @@ void *stock_manager(void *arg) {
             fgets(command, sizeof(command), stdin);
             if (sscanf(command, "%d", &nb_supplementary_rows) == 1) {
                 pthread_mutex_lock(&stock_mutex);  // Verrouille l'accès au stock
-//                add_row(stock, nb_rows, *nb_columns, nb_supplementary_rows);
+                add_row(*items, *nb_items, nb_rows, *nb_columns, nb_supplementary_rows);
                 pthread_mutex_unlock(&stock_mutex); // Déverrouille
                 printf("[Answer]  Rows added successfully!\n");
             } else {
@@ -425,22 +525,21 @@ void *stock_manager(void *arg) {
             fgets(command, sizeof(command), stdin);
             if (sscanf(command, "%d", &nb_supplementary_columns) == 1) {
                 pthread_mutex_lock(&stock_mutex);  // Verrouille l'accès au stock
-//                add_column(stock, *nb_rows, nb_columns, nb_supplementary_columns);
+                add_column(*items, *nb_items, *nb_rows, nb_columns, nb_supplementary_columns);
                 pthread_mutex_unlock(&stock_mutex); // Déverrouille
                 printf("[Answer] Columns added successfully!\n");  
             } else {  
                 printf("[Answer] Invalid input! Please enter a number.\n");  
-
             }
            
         }
         else if(strcmp(command, "4")==0){
-            printf("Enter the number_row.column (N_X.Y,...)\n> ");
+            printf("Enter the itemName;number_row.column (itemName;N_X.Y,...)\n> ");
             fgets(command, sizeof(command), stdin);
             command[strcspn(command, "\n")] = 0; // Supprime le '\n'
-            printf("Command : %s\n", command); 
+            printf("Command : %s\n", command);
             pthread_mutex_lock(&stock_mutex);  // Verrouille l'accès au stock
-            char *response = handle_request(stock, *nb_rows, *nb_columns, command, 0 );
+            char *response = handle_items_request(*items, *nb_items, *nb_rows, *nb_columns, command, 0);
             pthread_mutex_unlock(&stock_mutex); // Déverrouille
 
             if (response != NULL) {
@@ -449,6 +548,8 @@ void *stock_manager(void *arg) {
                 printf("[Answer] Stock updated successfully!\n");
             }
         }
+        // need to implement how to add items
+
         else if (strcmp(command, "5") == 0) {
             printf("[MANAGER] End of manager.\n");
             pthread_exit(NULL);
