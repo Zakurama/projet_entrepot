@@ -23,12 +23,6 @@
 #define INVENTORY_IP "127.0.0.1"
 #define INVENTORY_PORT 5000
 
-#define NB_ROBOT 2
-#define MAX_ARTICLES_PORTES 2
-#define MAX_ARTICLES_LISTE_ATTENTE 10
-#define MAX_ESPACE_STOCK 100
-#define MAX_WAYPOINTS 100
-
 int ports[NB_ROBOT] = {3000,8000};
 
 char ip[IP_SIZE];
