@@ -483,24 +483,28 @@ void *stock_manager(void *arg) {
     int *nb_items = args->nb_items;  // Récupère le pointeur vers nb_items
     free(args);  // Libère la mémoire de la structure allouée
 
+    printf("nb_items: %d\n", *nb_items);
+    printf("items: %p\n", (void *)*items);
+
+
     char command[MAXOCTETS];
 
     while (1) {
         printf("-----------------------------------------------------------------"); 
-        printf("\n[MANAGER]\nEnter a command : \n\t1.stock\n\t2.add_row\n\t3.add_column\n\t4.add_stock\n\t5.exit\n> ");
+        printf("\n[MANAGER]\nEnter a command : \n\t1.stock\n\t2.add_row\n\t3.add_column\n\t4.add_stock\n\t5.add_item\n\t6.exit\n> ");
         fgets(command, sizeof(command), stdin);
         command[strcspn(command, "\n")] = 0; // Supprime le '\n'
 
         if (strcmp(command, "1") == 0) {
-            printf("[MANAGER] Wich item :\n");
+            printf("[MANAGER] Which item :\n");
             fgets(command, sizeof(command), stdin);
             command[strcspn(command, "\n")] = 0; // Supprime le '\n'
-            if (get_item_index(*items, *nb_items, command) == -1) {
+            int item_index = get_item_index(*items, *nb_items, command);
+            if (item_index == -1) {
                 printf("[Answer] Item not found\n");
-                
             } else {
                 printf("[Answer] Stock :\n");
-                print_stock((*items)[get_item_index(*items, *nb_items, command)].stock, *nb_rows, *nb_columns);
+                print_stock((*items)[item_index].stock, *nb_rows, *nb_columns);
             }
         }
         else if (strcmp(command, "2") == 0) {
@@ -549,8 +553,24 @@ void *stock_manager(void *arg) {
             }
         }
         // need to implement how to add items
+        else if(strcmp(command, "5")==0){
+            item_t item;
+            printf("Enter the item name\n> ");
+            fgets(command, sizeof(command), stdin);
+            command[strcspn(command, "\n")] = 0; // Supprime le '\n'
+            item.item_name = (char *)malloc(strlen(command) + 1);
+            CHECK_ERROR(item.item_name, NULL, "Failed to allocate memory for item name");
+            strcpy(item.item_name, command);
 
-        else if (strcmp(command, "5") == 0) {
+            item.stock = NULL;
+            item.quantity = 0;
+
+            pthread_mutex_lock(&stock_mutex);  // Verrouille l'accès au stock
+            add_item(items, nb_items, item);
+            pthread_mutex_unlock(&stock_mutex); // Déverrouille
+            printf("[Answer] Item added successfully!\n");
+        }
+        else if (strcmp(command, "6") == 0) {
             printf("[MANAGER] End of manager.\n");
             pthread_exit(NULL);
         }
@@ -578,6 +598,9 @@ void add_item(item_t **items, int *nb_items, item_t item) {
 
 int get_item_index(item_t *items, int nb_items, const char *item_name) {
     for (int i = 0; i < nb_items; i++) {
+        char error_message[100];
+        snprintf(error_message, sizeof(error_message), "Item name is NULL at index %d\n", i);
+        CHECK_ERROR(items[i].item_name, NULL, error_message);
         if (strcmp(items[i].item_name, item_name) == 0) {
             return i;
         }
