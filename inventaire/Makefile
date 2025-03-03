@@ -1,38 +1,31 @@
 CPFLAGS=-I./include
 LDFLAGS=-L./lib
+
+LIB_UTILS = ../utils/lib/
+INC_UTILS = -I../utils/include
+
 CFLAGS=-Wall
 
 export PKG_CONFIG_PATH := /usr/lib/x86_64-linux-gnu/pkgconfig
 CUNIT_CFLAGS=$(shell PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) pkg-config --cflags cunit)
 CUNIT_LDFLAGS=$(shell PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) pkg-config --libs cunit)
 
-all : bin/inventaire bin/client libs
+all : bin/inventaire bin/client
 
 build/inventaire.o: src/inventaire.c
-	gcc -c $(CFLAGS) $(CPFLAGS) $^ -o $@
+	gcc -c $(CFLAGS) $(CPFLAGS) $(INC_UTILS) $^ -o $@
 
-bin/inventaire: src/main_inventaire.c build/inventaire.o lib/tcp.so
-	gcc $(CFLAGS) $(CPFLAGS) $(LDFLAGS) -lpthread $^ -o $@ 
+bin/inventaire: src/main_inventaire.c build/inventaire.o $(LIB_UTILS)tcp.so
+	gcc $(CFLAGS) $(CPFLAGS) $(LDFLAGS) $(INC_UTILS) -lpthread $^ -o $@ 
 
-bin/client : src/client.c lib/tcp.so
-	gcc $(CFLAGS) $(CPFLAGS) $(LDFLAGS) $^ -o $@
-
-libs: lib/tcp.so
-
-lib/tcp.so: build/tcp-fpic.o
-	gcc -shared $^ -o $@
-
-build/tcp-fpic.o: src/tcp.c
-	gcc -c -fPIC $(CFLAGS) $(CPFLAGS) $^ -o $@
+bin/client : src/client.c $(LIB_UTILS)tcp.so
+	gcc $(CFLAGS) $(CPFLAGS) $(LDFLAGS) $(INC_UTILS) $^ -o $@
 
 tests: bin/test
 	bin/test
 
-bin/test: tests/test.c build/inventaire.o lib/tcp.so
-	gcc $(CFLAGS) $(CPFLAGS) $(LDFLAGS) $(CUNIT_CFLAGS) $^ -o $@ $(CUNIT_LDFLAGS)
+bin/test: tests/test.c build/inventaire.o $(LIB_UTILS)tcp.so
+	gcc $(CFLAGS) $(CPFLAGS) $(LDFLAGS) $(CUNIT_CFLAGS) $(INC_UTILS) $^ -o $@ $(CUNIT_LDFLAGS)
 
-clean: clean-libs
+clean: 
 	rm -f bin/* build/*
-
-clean-libs:
-	rm -f lib/* build/*

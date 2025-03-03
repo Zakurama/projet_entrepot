@@ -1,5 +1,9 @@
 CPFLAGS=-I./include
 LDFLAGS=-L./lib
+
+LIB_UTILS = ../utils/lib/
+INC_UTILS = -I../utils/include
+
 CFLAGS=-Wall
 
 export PKG_CONFIG_PATH := /usr/lib/x86_64-linux-gnu/pkgconfig
@@ -8,8 +12,8 @@ CUNIT_LDFLAGS=$(shell PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) pkg-config --libs cunit
 
 all : bin/ordinateur_central
 
-bin/ordinateur_central: src/main_ordi_central.c ../Inventaire/lib/tcp.so
-	gcc $(CFLAGS) $(CPFLAGS) $(LDFLAGS) -I../Inventaire/include $^ -o $@ 
+bin/ordinateur_central: src/main_ordi_central.c $(LIB_UTILS)tcp.so
+	gcc $(CFLAGS) $(CPFLAGS) $(LDFLAGS) $(INC_UTILS) $^ -o $@ 
 
 tests: bin/test
 	bin/test
