@@ -114,7 +114,7 @@ void add_column(item_t *items, int nb_items, int nb_rows, int *nb_columns, int n
 // message format: "itemName_N,itemName_N,..."
 char *check_client_request(const char *request, item_t *items, int nb_items, int max_elements) {
     int count = 0;
-    char item_name[50];
+    char name[50];
     int value;
     char *item_names[max_elements];
 
@@ -127,10 +127,10 @@ char *check_client_request(const char *request, item_t *items, int nb_items, int
             return "Maximum number of elements exceeded, please reduce the number to change\n";
         }
 
-        if (sscanf(token, "%[^_]_%d", item_name, &value) != 2) {
+        if (sscanf(token, "%[^_]_%d", name, &value) != 2) {
             return "Invalid request format\n";
         }
-        int index = get_item_index(items, nb_items, item_name);
+        int index = get_item_index(items, nb_items, name);
         if (index == -1) {
             return "Item not found\n";
         }
@@ -139,19 +139,19 @@ char *check_client_request(const char *request, item_t *items, int nb_items, int
         }
         else if (items[index].quantity < value) {
             char *error_message = (char *)malloc(100 * sizeof(char));
-            snprintf(error_message, 100, "Cannot take %d of stock %s at current value %d\n", value, item_name, items[index].quantity);
+            snprintf(error_message, 100, "Cannot take %d of stock %s at current value %d\n", value, name, items[index].quantity);
             return error_message;
         }
 
-        // Check if item_name is already in item_names
+        // Check if name is already in item_names
         for (int i = 0; i < count; i++) {
-            if (strcmp(item_names[i], item_name) == 0) {
+            if (strcmp(item_names[i], name) == 0) {
                 return "Duplicate item name in request\n";
             }
         }
 
         // Store the item name
-        item_names[count] = strdup(item_name);
+        item_names[count] = strdup(name);
         count++;
         token = strtok(NULL, ",");
     }
@@ -213,16 +213,16 @@ char *handle_items_request(item_t *items, int nb_items, int nb_rows, int nb_colu
     while (item_token != NULL) {
         char item_token_copy[strlen(item_token) + 1];
         strcpy(item_token_copy, item_token);
-        char *item_name = strtok(item_token_copy, ";");
+        char *name = strtok(item_token_copy, ";");
         char *positions = strtok(NULL, ";");
 
-        if (item_name == NULL || positions == NULL) {
+        if (name == NULL || positions == NULL) {
             // Free allocated memory
             for (int i = 0; i < max_elements; i++) {free(L_n[i]);free(L_x[i]);free(L_y[i]);}
             return "Invalid request format\n";
         }
 
-        item_index[count_items] = get_item_index(items, nb_items, item_name);
+        item_index[count_items] = get_item_index(items, nb_items, name);
         if (item_index[count_items] == -1) {
             // Free allocated memory
             for (int i = 0; i < max_elements; i++) {free(L_n[i]);free(L_x[i]);free(L_y[i]);}
@@ -298,7 +298,7 @@ char *transfer_stock(item_t *items, int nb_items, int nb_rows, int nb_columns, c
             free(result);
             return "No stock available\n";
         }
-        strcat(result, items[index].item_name);
+        strcat(result, items[index].name);
         strcat(result, ";");
         for (int j = 0; j < nb_rows; j++) {
             for (int k = 0; k < nb_columns; k++) {
@@ -343,15 +343,15 @@ char **parse_items_names(item_t *items, int nb_items, const char *request, int *
             return NULL;
         }
 
-        char item_name[50];
-        if (sscanf(token, "%[^;]", item_name) != 1) {
+        char name[50];
+        if (sscanf(token, "%[^;]", name) != 1) {
             for (int i = 0; i < count; i++) {
                 free(item_names[i]);
             }
             free(item_names);
             return NULL;
         }
-        item_names[count] = strdup(item_name);
+        item_names[count] = strdup(name);
         if (item_names[count] == NULL) {
             for (int i = 0; i < count; i++) {
                 free(item_names[i]);
@@ -419,13 +419,15 @@ void *handle_client(void *arg) {
 
     while (1) {
         // Réception du message de la part du lecteur
-        recev_message(client_sd,buff_reception);
+        recev_message(client_sd, buff_reception);
+        strcpy(buff_emission, "");
 
         if (strcmp(buff_reception, "stock") == 0) {
             for (int i = 0; i < *nb_items; i++) {
-                char temp[100];
-                sprintf(temp, "%s: %d\n", items[i]->item_name, items[i]->quantity);
+                char temp[100] = "";
+                sprintf(temp, "%s: %d\n", (*items)[i].name, (*items)[i].quantity);
                 strcat(buff_emission, temp);
+
             }
             send_message(client_sd,buff_emission);
             // strcpy(buff_emission, get_stock_string(*stock, *nb_rows, *nb_columns));
@@ -548,9 +550,9 @@ void *stock_manager(void *arg) {
             printf("Enter the item name\n> ");
             fgets(command, sizeof(command), stdin);
             command[strcspn(command, "\n")] = 0; // Supprime le '\n'
-            item.item_name = (char *)malloc(strlen(command) + 1);
-            CHECK_ERROR(item.item_name, NULL, "Failed to allocate memory for item name");
-            strcpy(item.item_name, command);
+            item.name = (char *)malloc(strlen(command) + 1);
+            CHECK_ERROR(item.name, NULL, "Failed to allocate memory for item name");
+            strcpy(item.name, command);
 
             item.stock = NULL;
             item.quantity = 0;
@@ -576,22 +578,22 @@ void add_item(item_t **items, int *nb_items, item_t item) {
     *items = (item_t *)realloc(*items, (*nb_items + 1) * sizeof(item_t));
     CHECK_ERROR(*items, NULL, "Failed to allocate memory for new item");
 
-    (*items)[*nb_items].item_name = (char *)malloc(strlen(item.item_name) + 1);
-    CHECK_ERROR((*items)[*nb_items].item_name, NULL, "Failed to allocate memory for item name");
+    (*items)[*nb_items].name = (char *)malloc(strlen(item.name) + 1);
+    CHECK_ERROR((*items)[*nb_items].name, NULL, "Failed to allocate memory for item name");
 
-    strcpy((*items)[*nb_items].item_name, item.item_name);
+    strcpy((*items)[*nb_items].name, item.name);
     (*items)[*nb_items].stock = item.stock;
     (*items)[*nb_items].quantity = item.quantity;
 
     (*nb_items)++;
 }
 
-int get_item_index(item_t *items, int nb_items, const char *item_name) {
+int get_item_index(item_t *items, int nb_items, const char *name) {
     for (int i = 0; i < nb_items; i++) {
         char error_message[100];
         snprintf(error_message, sizeof(error_message), "Item name is NULL at index %d\n", i);
-        CHECK_ERROR(items[i].item_name, NULL, error_message);
-        if (strcmp(items[i].item_name, item_name) == 0) {
+        CHECK_ERROR(items[i].name, NULL, error_message);
+        if (strcmp(items[i].name, name) == 0) {
             return i;
         }
     }

@@ -16,7 +16,7 @@
 #define NEW_STOCK_INIT_VALUE 0
 
 typedef struct{
-    char *item_name;
+    char *name;
     int **stock;
     int quantity;
 } item_t;
@@ -41,7 +41,7 @@ void free_stock(int **stock, int nb_rows);
 void *handle_client(void *arg);
 void *stock_manager(void *arg);
 char *check_client_request(const char *request, item_t *items, int nb_items, int max_elements);
-int get_item_index(item_t *items, int nb_items, const char *item_name);
+int get_item_index(item_t *items, int nb_items, const char *name);
 void add_item(item_t **items, int *nb_items, item_t item);
 char *transfer_stock(item_t *items, int nb_items, int nb_rows, int nb_columns, const char **item_names, int nb_items_request);
 char *handle_items_request(item_t *items, int nb_items, int nb_rows, int nb_columns, const char *request, int central_coputer);

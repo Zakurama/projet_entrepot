@@ -162,8 +162,8 @@ void test_parse_message(void){
 void test_check_client_message_correct(void) {
     const char *request = "item1_1,item2_2";
     item_t items[2];
-    items[0].item_name = "item1";
-    items[1].item_name = "item2";
+    items[0].name = "item1";
+    items[1].name = "item2";
     items[0].quantity = 5;
     items[1].quantity = 5;
     char *response = check_client_request(request, items, 2, 2);
@@ -173,7 +173,7 @@ void test_check_client_message_correct(void) {
 void test_check_client_message_item_not_found(void) {
     const char *request = "item1_1,item2_2";
     item_t items[1];
-    items[0].item_name = "item1";
+    items[0].name = "item1";
     items[0].quantity = 5;
     char *response = check_client_request(request, items, 1, 2);
     CU_ASSERT(response != NULL);
@@ -183,8 +183,8 @@ void test_check_client_message_item_not_found(void) {
 void test_check_client_message_invalid_request(void) {
     const char *request = "item1.1,item2_2"; // . instead of _
     item_t items[2];
-    items[0].item_name = "item1";
-    items[1].item_name = "item2";
+    items[0].name = "item1";
+    items[1].name = "item2";
     items[0].quantity = 5;
     items[1].quantity = 5;
     char *response = check_client_request(request, items, 2, 2);
@@ -195,8 +195,8 @@ void test_check_client_message_invalid_request(void) {
 void test_check_client_message_negative_quantity(void) {
     const char *request = "item1_-1,item2_2";
     item_t items[2];
-    items[0].item_name = "item1";
-    items[1].item_name = "item2";
+    items[0].name = "item1";
+    items[1].name = "item2";
     items[0].quantity = 5;
     items[1].quantity = 5;
     char *response = check_client_request(request, items, 2, 2);
@@ -207,8 +207,8 @@ void test_check_client_message_negative_quantity(void) {
 void test_check_client_message_insufficient_quantity(void) {
     const char *request = "item1_6,item2_2";
     item_t items[2];
-    items[0].item_name = "item1";
-    items[1].item_name = "item2";
+    items[0].name = "item1";
+    items[1].name = "item2";
     items[0].quantity = 5;
     items[1].quantity = 5;
     char *response = check_client_request(request, items, 2, 2);
@@ -219,8 +219,8 @@ void test_check_client_message_insufficient_quantity(void) {
 void test_check_client_message_max_elements_exceeded(void) {
     const char *request = "item1_1,item2_2";
     item_t items[2];
-    items[0].item_name = "item1";
-    items[1].item_name = "item2";
+    items[0].name = "item1";
+    items[1].name = "item2";
     items[0].quantity = 5;
     items[1].quantity = 5;
     char *response = check_client_request(request, items, 2, 1); // max_elements = 1
@@ -231,7 +231,7 @@ void test_check_client_message_max_elements_exceeded(void) {
 void test_check_client_message_duplicate_item_name(void) {
     const char *request = "item1_1,item1_2";
     item_t items[1];
-    items[0].item_name = "item1";
+    items[0].name = "item1";
     items[0].quantity = 5;
     char *response = check_client_request(request, items, 1, 2);
     CU_ASSERT(response != NULL);
@@ -246,16 +246,16 @@ void test_add_item(void) {
     add_item(&items, &nb_items, item1);
     add_item(&items, &nb_items, item2);
     CU_ASSERT(nb_items == 2);
-    CU_ASSERT_STRING_EQUAL(items[0].item_name, "item1");
+    CU_ASSERT_STRING_EQUAL(items[0].name, "item1");
     CU_ASSERT(items[0].quantity == 5);
-    CU_ASSERT_STRING_EQUAL(items[1].item_name, "item2");
+    CU_ASSERT_STRING_EQUAL(items[1].name, "item2");
     CU_ASSERT(items[1].quantity == 5);
 }
 
 void test_get_item_index(void) {
     item_t items[2];
-    items[0].item_name = "item1";
-    items[1].item_name = "item2";
+    items[0].name = "item1";
+    items[1].name = "item2";
     CU_ASSERT(get_item_index(items, 2, "item1") == 0);
     CU_ASSERT(get_item_index(items, 2, "item2") == 1);
     CU_ASSERT(get_item_index(items, 2, "item3") == -1);
@@ -263,8 +263,8 @@ void test_get_item_index(void) {
 
 void test_transfer_stock(void){
     item_t items[2];
-    items[0].item_name = "item1";
-    items[1].item_name = "item2";
+    items[0].name = "item1";
+    items[1].name = "item2";
     int nb_rows = 5;
     int nb_columns = 7;
     const char *item_placement = "5_1.1,5_2.2";
@@ -281,8 +281,8 @@ void test_transfer_stock(void){
 
 void test_handle_items_request_correct(void) {
     item_t items[2];
-    items[0].item_name = "item1";
-    items[1].item_name = "item2";
+    items[0].name = "item1";
+    items[1].name = "item2";
     items[0].quantity = 5;
     items[1].quantity = 5;
     int nb_rows = 5;
@@ -307,8 +307,8 @@ void test_handle_items_request_correct(void) {
 
 void test_handle_items_request_correct_not_central_computer(void) {
     item_t items[2];
-    items[0].item_name = "item1";
-    items[1].item_name = "item2";
+    items[0].name = "item1";
+    items[1].name = "item2";
     items[0].quantity = 5;
     items[1].quantity = 5;
     int nb_rows = 5;
@@ -333,8 +333,8 @@ void test_handle_items_request_correct_not_central_computer(void) {
 
 void test_handle_items_request_invalid_format(void) {
     item_t items[2];
-    items[0].item_name = "item1";
-    items[1].item_name = "item2";
+    items[0].name = "item1";
+    items[1].name = "item2";
     items[0].quantity = 5;
     items[1].quantity = 5;
     int nb_rows = 5;
@@ -355,7 +355,7 @@ void test_handle_items_request_invalid_format(void) {
 
 void test_handle_items_request_item_not_found(void) {
     item_t items[1];
-    items[0].item_name = "item1";
+    items[0].name = "item1";
     items[0].quantity = 5;
     int nb_rows = 5;
     int nb_columns = 7;
@@ -371,8 +371,8 @@ void test_handle_items_request_item_not_found(void) {
 
 void test_handle_items_request_parse_error(void) {
     item_t items[2];
-    items[0].item_name = "item1";
-    items[1].item_name = "item2";
+    items[0].name = "item1";
+    items[1].name = "item2";
     items[0].quantity = 5;
     items[1].quantity = 5;
     int nb_rows = 5;
@@ -393,8 +393,8 @@ void test_handle_items_request_parse_error(void) {
 
 void test_handle_items_request_modify_stock_error(void) {
     item_t items[2];
-    items[0].item_name = "item1";
-    items[1].item_name = "item2";
+    items[0].name = "item1";
+    items[1].name = "item2";
     items[0].quantity = 5;
     items[1].quantity = 5;
     int nb_rows = 5;
@@ -420,8 +420,8 @@ void test_handle_items_request_modify_stock_error(void) {
 
 void test_parse_items_names_correct(void) {
     item_t items[2];
-    items[0].item_name = "item1";
-    items[1].item_name = "item2";
+    items[0].name = "item1";
+    items[1].name = "item2";
     const char *request = "item1;1_1.1,1_2.2/item2;2_1.1,2_2.2";
     int nb_items_request;
     char **item_names = parse_items_names(items, 2, request, &nb_items_request);
@@ -437,8 +437,8 @@ void test_parse_items_names_correct(void) {
 
 void test_parse_items_names_invalid_format(void) {
     item_t items[2];
-    items[0].item_name = "item1";
-    items[1].item_name = "item2";
+    items[0].name = "item1";
+    items[1].name = "item2";
     const char *request = "item1;1_1.1,1_2.2/item2;2_1.1,2_2.2";
     int nb_items_request;
     char **item_names = parse_items_names(items, 2, request, &nb_items_request);
@@ -452,8 +452,8 @@ void test_parse_items_names_invalid_format(void) {
 
 void test_parse_items_names_empty_request(void) {
     item_t items[2];
-    items[0].item_name = "item1";
-    items[1].item_name = "item2";
+    items[0].name = "item1";
+    items[1].name = "item2";
     const char *request = "";
     int nb_items_request;
     char **item_names = parse_items_names(items, 2, request, &nb_items_request);
@@ -463,8 +463,8 @@ void test_parse_items_names_empty_request(void) {
 void test_parse_items_names_exceed_max_items(void) {
     item_t items[51];
     for (int i = 0; i < 51; i++) {
-        items[i].item_name = malloc(10);
-        sprintf(items[i].item_name, "item%d", i + 1);
+        items[i].name = malloc(10);
+        sprintf(items[i].name, "item%d", i + 1);
     }
     char request[1024] = "";
     for (int i = 0; i < 51; i++) {
@@ -479,7 +479,7 @@ void test_parse_items_names_exceed_max_items(void) {
     char **item_names = parse_items_names(items, 51, request, &nb_items_request);
     CU_ASSERT(item_names == NULL);
     for (int i = 0; i < 51; i++) {
-        free(items[i].item_name);
+        free(items[i].name);
     }
 }
 
