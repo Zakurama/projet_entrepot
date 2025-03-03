@@ -2,33 +2,44 @@
 
 pthread_mutex_t stock_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-void init_stock(int ***stock, int nb_rows, int nb_columns, const char *item_placement) {
+void init_stock(item_t *item, int nb_rows, int nb_columns, const char *item_placement) {
+    item->quantity = 0;
     int max_elements = 50;
     int L_n[max_elements], L_x[max_elements], L_y[max_elements], count;
 
-    // We assume that the message is correctly formatted
+    // Parse the input message
     parse_message(item_placement, L_n, L_x, L_y, &count, max_elements);
-    // humans start counting from 1
+    
+    // Humans start counting from 1
     for (int i = 0; i < count; i++) {
         L_x[i]--;
         L_y[i]--;
     }
 
-    // Allocate memory for the stock
-    *stock = (int **)malloc(nb_rows * sizeof(int *));
-    CHECK_ERROR(*stock, NULL, "Failed to allocate memory for rows");
+    // Allocate memory correctly
+    item->stock = (int **)malloc(nb_rows * sizeof(int *));
+    CHECK_ERROR(item->stock, NULL, "Failed to allocate memory for rows");
     for (int i = 0; i < nb_rows; i++) {
-        (*stock)[i] = (int *)malloc(nb_columns * sizeof(int));
-        CHECK_ERROR((*stock)[i], NULL, "Failed to allocate memory for columns");
+        item->stock[i] = (int *)malloc(nb_columns * sizeof(int));
+        CHECK_ERROR(item->stock[i], NULL, "Failed to allocate memory for columns");
+    }
+
+    // Initialize stock with 0
+    for (int i = 0; i < nb_rows; i++) {
+        for (int j = 0; j < nb_columns; j++) {
+            item->stock[i][j] = 0;
+        }
     }
 
     // Place the stock items at the correct positions
     for (int i = 0; i < count; i++) {
         if (L_x[i] >= 0 && L_x[i] < nb_rows && L_y[i] >= 0 && L_y[i] < nb_columns) {
-            (*stock)[L_x[i]][L_y[i]] = L_n[i];
+            item->stock[L_x[i]][L_y[i]] = L_n[i];
+            item->quantity += L_n[i];
         }
     }
 }
+
 
 char *get_stock_string(int **stock, int nb_rows, int nb_columns) {
     // Estimation de la taille nécessaire
@@ -98,35 +109,6 @@ void add_column(item_t *items, int nb_items, int nb_rows, int *nb_columns, int n
 
     // Update column count
     (*nb_columns) += nb_supplementary_columns;
-}
-
-// client is a boolean that indicates if the request is coming from a client or a stock manager
-char * handle_request(int ***stock, int nb_rows, int nb_columns, const char *request, int client){
-    int max_elements = 50;
-    int L_n[max_elements], L_x[max_elements], L_y[max_elements], count;
-    char * return_parse_message = parse_message(request, L_n, L_x, L_y, &count, max_elements);
-    if (return_parse_message != NULL) {
-        return return_parse_message;
-    }
-
-    for (int i = 0; i < count; i++) {
-        // humans start counting from 1
-        L_x[i]--;
-        L_y[i]--;
-        if (client){
-            // clients do not add but remove stock
-            L_n[i] = - L_n[i];
-            if (L_n[i] > 0) {
-                return "Clients cannot add stock\n";
-            }
-        }
-    }
-
-    char * return_modify_stock_message = modify_stock(stock, nb_rows, nb_columns, L_x, L_y, L_n, count);
-    if (return_modify_stock_message != NULL) {
-        return return_modify_stock_message;
-    }
-    return NULL;
 }
 
 // message format: "itemName_N,itemName_N,..."
@@ -282,7 +264,7 @@ char *handle_items_request(item_t *items, int nb_items, int nb_rows, int nb_colu
                 L_n[i][j] = -L_n[i][j];
             }
         }
-        char *return_message = modify_stock(&(items[item_index[i]].stock), nb_rows, nb_columns, L_x[i], L_y[i], L_n[i], count[i]);
+        char *return_message = modify_stock(&(items[item_index[i]]), nb_rows, nb_columns, L_x[i], L_y[i], L_n[i], count[i]);
 
         if (return_message != NULL) {
             // Free allocated memory
@@ -385,22 +367,34 @@ char **parse_items_names(item_t *items, int nb_items, const char *request, int *
     return item_names;
 }
 
-char * modify_stock(int ***stock, int nb_rows, int nb_columns, int *rows, int *columns, int *values, int count) {
+char *modify_stock(item_t *item, int nb_rows, int nb_columns, int *rows, int *columns, int *values, int count) {
+    if (item->stock == NULL) {
+        return "Stock is not initialized\n";
+    }
+
+    // Validate input indices
     for (int i = 0; i < count; i++) {
         if (rows[i] < 0 || rows[i] >= nb_rows || columns[i] < 0 || columns[i] >= nb_columns) {
             return "Invalid row or column index\n";
         }
-        else if ((*stock)[rows[i]][columns[i]] + values[i] < 0) {
+        else if (item->stock[rows[i]][columns[i]] + values[i] < 0) {
             char *error_message = (char *)malloc(100 * sizeof(char));
-            snprintf(error_message, 100, "Cannot add %d of stock (%d,%d) at current value %d\n", values[i], rows[i], columns[i], (*stock)[rows[i]][columns[i]]);
+            snprintf(error_message, 100, 
+                     "Cannot add %d of stock at (%d, %d). Current value: %d\n", 
+                     values[i], rows[i], columns[i], item->stock[rows[i]][columns[i]]);
             return error_message;
         }
     }
+
+    // Modify the stock
     for (int i = 0; i < count; i++) {
-        (*stock)[rows[i]][columns[i]] += values[i];
+        item->stock[rows[i]][columns[i]] += values[i];
+        item->quantity += values[i];
     }
+
     return NULL;
 }
+
 
 void free_stock(int **stock, int nb_rows) {
     for (int i = 0; i < nb_rows; i++) {

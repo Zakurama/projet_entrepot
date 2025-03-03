@@ -11,8 +11,7 @@ int main(int argc, char *argv[]) {
     item_t *items = malloc(nb_items * sizeof(item_t));
     for (int i = 0; i < 2; i++) {
         items[i].stock = NULL; // Ensure stock is initialized
-        init_stock(&items[i].stock, nb_rows, nb_columns, item_placement);
-        items[i].quantity = 5;
+        init_stock(&items[i], nb_rows, nb_columns, item_placement);
         items[i].item_name = malloc(max_item_name_size * sizeof(char));
         snprintf(items[i].item_name, max_item_name_size, "item%d", i);
     }

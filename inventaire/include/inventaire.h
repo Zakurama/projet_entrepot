@@ -30,14 +30,13 @@ typedef struct {
     int * nb_items;
 } thread_args_t;
 
-void init_stock(int ***stock, int nb_rows, int nb_columns, const char *item_placement);
+void init_stock(item_t *item, int nb_rows, int nb_columns, const char *item_placement);
 char *get_stock_string(int **stock, int nb_rows, int nb_columns) ;
 void print_stock(int **stock, int nb_rows, int nb_columns);
 void add_row(item_t *items, int nb_items, int *nb_rows, int nb_columns, int nb_supplementary_rows);
 void add_column(item_t *items, int nb_items, int nb_rows, int *nb_columns, int nb_supplementary_columns);
-char * handle_request(int ***stock, int nb_rows, int nb_columns, const char *request, int client);
 char * parse_message(const char *request, int *L_n, int *L_x, int *L_y, int *count, int max_elements);
-char * modify_stock(int ***stock, int nb_rows, int nb_columns, int *rows, int *columns, int *values, int count);
+char * modify_stock(item_t *item, int nb_rows, int nb_columns, int *rows, int *columns, int *values, int count);
 void free_stock(int **stock, int nb_rows);
 void *handle_client(void *arg);
 void *stock_manager(void *arg);

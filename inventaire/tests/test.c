@@ -9,23 +9,26 @@
 #include "inventaire.h"
 
 void test_init_stock(void){
-    int **stock;
     int nb_rows = 5;
     int nb_columns = 7;
     const char *item_placement = "5_1.1,5_2.2";
-    init_stock(&stock, nb_rows, nb_columns, item_placement);
+    item_t item;
+    item.stock = NULL;
+    init_stock(&item, nb_rows, nb_columns, item_placement);
+    CU_ASSERT(item.quantity == 10);
+
     for (int i = 0; i < nb_rows; i++)
     {
         for (int j = 0; j < nb_columns; j++)
         {
             if (i == 0 && j == 0){
-                CU_ASSERT(stock[i][j]== 5)
+                CU_ASSERT(item.stock[i][j]== 5)
             }
             else if (i == 1 && j == 1){
-                CU_ASSERT(stock[i][j]== 5)
+                CU_ASSERT(item.stock[i][j]== 5)
             }
             else{
-                CU_ASSERT(stock[i][j]==0)
+                CU_ASSERT(item.stock[i][j]==0)
             }
         }
     }
@@ -41,7 +44,7 @@ void test_add_rows(void) {
     item_t items[2];
     for (int i = 0; i < 2; i++) {
         items[i].stock = NULL; // Ensure stock is initialized to NULL before allocation
-        init_stock(&items[i].stock, nb_rows, nb_columns, item_placement);
+        init_stock(&items[i], nb_rows, nb_columns, item_placement);
         items[i].quantity = 5;
     }
 
@@ -71,7 +74,7 @@ void test_add_columns(void) {
     item_t items[2];
     for (int i = 0; i < 2; i++) {
         items[i].stock = NULL; // Ensure stock is initialized
-        init_stock(&items[i].stock, nb_rows, nb_columns, item_placement);
+        init_stock(&items[i], nb_rows, nb_columns, item_placement);
         items[i].quantity = 5;
     }
 
@@ -95,7 +98,6 @@ void test_add_columns(void) {
 }
 
 void test_add_stock(void){
-    int **stock;
     int nb_rows = 5;
     int nb_columns = 7;
     int stock_init = 5;
@@ -103,14 +105,17 @@ void test_add_stock(void){
     int columns[2] = {0, 1};
     char item_placement[100];
     sprintf(item_placement, "%d_%d.%d,%d_%d.%d", stock_init, rows[0]+1, columns[0]+1, stock_init, rows[1]+1, columns[1]+1);
-    init_stock(&stock, nb_rows, nb_columns, item_placement);
+
+    item_t item;
+    item.stock = NULL;
+    init_stock(&item, nb_rows, nb_columns, item_placement);
 
     const int count = 2;
     int values[2] = {1, 2};
-    char *error_message = modify_stock(&stock, nb_rows, nb_columns, rows, columns, values, count);
+    char *error_message = modify_stock(&item, nb_rows, nb_columns, rows, columns, values, count);
     CU_ASSERT(error_message == NULL);
     for (int i = 0; i < count; i++){
-        CU_ASSERT(stock[rows[i]][columns[i]] == 5 + values[i]);
+        CU_ASSERT(item.stock[rows[i]][columns[i]] == 5 + values[i]);
     }
 }
 
@@ -152,68 +157,6 @@ void test_parse_message(void){
     CU_ASSERT(L_n[1] == 1);
     CU_ASSERT(L_x[1] == 2);
     CU_ASSERT(L_y[1] == 2);
-}
-
-void test_handle_request_client(void){
-    int **stock;
-    int nb_rows = 5;
-    int nb_columns = 7;
-    const char *item_placement = "5_1.1,5_2.2";
-    init_stock(&stock, nb_rows, nb_columns, item_placement);
-    const char *request = "1_1.1,1_2.2";
-    char *response = handle_request(&stock, nb_rows, nb_columns, request, 1);
-    CU_ASSERT(response == NULL);
-    CU_ASSERT(stock[0][0] == STOCK_INIT - 1);
-    CU_ASSERT(stock[1][1] == STOCK_INIT - 1);
-}
-
-void test_handle_request_not_client(void){
-    int **stock;
-    int nb_rows = 5;
-    int nb_columns = 7;
-    const char *item_placement = "5_1.1,5_2.2";
-    init_stock(&stock, nb_rows, nb_columns, item_placement);
-    const char *request = "1_1.1,1_2.2";
-    char *response = handle_request(&stock, nb_rows, nb_columns, request, 0);
-    CU_ASSERT(response == NULL);
-    CU_ASSERT(stock[0][0] == STOCK_INIT + 1);
-    CU_ASSERT(stock[1][1] == STOCK_INIT + 1);
-}
-
-void test_handle_request_invalid_request(void) {
-    int **stock;
-    int nb_rows = 5;
-    int nb_columns = 7;
-    const char *item_placement = "5_1.1,5_2.2";
-    init_stock(&stock, nb_rows, nb_columns, item_placement);
-    const char *request = "invalid_request";
-    char *response = handle_request(&stock, nb_rows, nb_columns, request, 1);
-    CU_ASSERT(response != NULL);
-    CU_ASSERT_STRING_EQUAL(response, "Invalid request format\n");
-}
-
-void test_handle_request_client_add_stock(void) {
-    int **stock;
-    int nb_rows = 5;
-    int nb_columns = 7;
-    const char *item_placement = "5_1.1,5_2.2";
-    init_stock(&stock, nb_rows, nb_columns, item_placement);
-    const char *request = "-1_1.1,-1_2.2";
-    char *response = handle_request(&stock, nb_rows, nb_columns, request, 1);
-    CU_ASSERT(response != NULL);
-    CU_ASSERT_STRING_EQUAL(response, "Clients cannot add stock\n");
-}
-
-void test_handle_request_out_of_bounds(void) {
-    int **stock;
-    int nb_rows = 5;
-    int nb_columns = 7;
-    const char *item_placement = "5_1.1,5_2.2";
-    init_stock(&stock, nb_rows, nb_columns, item_placement);
-    const char *request = "6_1.1,1_8.2";
-    char *response = handle_request(&stock, nb_rows, nb_columns, request, 0);
-    CU_ASSERT(response != NULL);
-    CU_ASSERT_STRING_EQUAL(response, "Invalid row or column index\n");
 }
 
 void test_check_client_message_correct(void) {
@@ -322,14 +265,12 @@ void test_transfer_stock(void){
     item_t items[2];
     items[0].item_name = "item1";
     items[1].item_name = "item2";
-    items[0].quantity = 5;
-    items[1].quantity = 5;
     int nb_rows = 5;
     int nb_columns = 7;
     const char *item_placement = "5_1.1,5_2.2";
     for (int i = 0; i < 2; i++) {
         items[i].stock = NULL; // Ensure stock is initialized to NULL before allocation
-        init_stock(&items[i].stock, nb_rows, nb_columns, item_placement);
+        init_stock(&items[i], nb_rows, nb_columns, item_placement);
     }
     const char *item_names[2] = {"item1", "item2"};
     char *response = transfer_stock(items, 2, nb_rows, nb_columns, item_names, 2);
@@ -349,7 +290,7 @@ void test_handle_items_request_correct(void) {
     const char *item_placement = "5_1.1,5_2.2";
     for (int i = 0; i < 2; i++) {
         items[i].stock = NULL;
-        init_stock(&items[i].stock, nb_rows, nb_columns, item_placement);
+        init_stock(&items[i], nb_rows, nb_columns, item_placement);
     }
     const char *request = "item1;1_1.1,1_2.2/item2;2_1.1,2_2.2";
     char *response = handle_items_request(items, 2, nb_rows, nb_columns, request, 0);
@@ -375,7 +316,7 @@ void test_handle_items_request_correct_not_central_computer(void) {
     const char *item_placement = "5_1.1,5_2.2";
     for (int i = 0; i < 2; i++) {
         items[i].stock = NULL;
-        init_stock(&items[i].stock, nb_rows, nb_columns, item_placement);
+        init_stock(&items[i], nb_rows, nb_columns, item_placement);
     }
     const char *request = "item1;1_1.1,1_2.2/item2;2_1.1,2_2.2";
     char *response = handle_items_request(items, 2, nb_rows, nb_columns, request, 1);
@@ -401,7 +342,7 @@ void test_handle_items_request_invalid_format(void) {
     const char *item_placement = "5_1.1,5_2.2";
     for (int i = 0; i < 2; i++) {
         items[i].stock = NULL;
-        init_stock(&items[i].stock, nb_rows, nb_columns, item_placement);
+        init_stock(&items[i], nb_rows, nb_columns, item_placement);
     }
     const char *request = "item1;1_1.1,1_2.2/item2";
     char *response = handle_items_request(items, 2, nb_rows, nb_columns, request, 0);
@@ -420,7 +361,7 @@ void test_handle_items_request_item_not_found(void) {
     int nb_columns = 7;
     const char *item_placement = "5_1.1,5_2.2";
     items[0].stock = NULL;
-    init_stock(&items[0].stock, nb_rows, nb_columns, item_placement);
+    init_stock(&items[0], nb_rows, nb_columns, item_placement);
     const char *request = "item2;1_1.1,1_2.2";
     char *response = handle_items_request(items, 1, nb_rows, nb_columns, request, 1);
     CU_ASSERT(response != NULL);
@@ -439,7 +380,7 @@ void test_handle_items_request_parse_error(void) {
     const char *item_placement = "5_1.1,5_2.2";
     for (int i = 0; i < 2; i++) {
         items[i].stock = NULL;
-        init_stock(&items[i].stock, nb_rows, nb_columns, item_placement);
+        init_stock(&items[i], nb_rows, nb_columns, item_placement);
     }
     const char *request = "item1;1_1.1,1_2.2/item2;invalid";
     char *response = handle_items_request(items, 2, nb_rows, nb_columns, request, 0);
@@ -461,7 +402,7 @@ void test_handle_items_request_modify_stock_error(void) {
     const char *item_placement = "5_1.1,5_2.2";
     for (int i = 0; i < 2; i++) {
         items[i].stock = NULL;
-        init_stock(&items[i].stock, nb_rows, nb_columns, item_placement);
+        init_stock(&items[i], nb_rows, nb_columns, item_placement);
     }
     const char *request = "item1;1_1.1,1_2.2/item2;1_6.1";
     char *response = handle_items_request(items, 2, nb_rows, nb_columns, request, 0);
@@ -580,31 +521,6 @@ int main() {
     // }
 
     if (NULL == CU_add_test(pSuite, "test parse message", test_parse_message)) {
-        CU_cleanup_registry();
-        return CU_get_error();
-    }
-
-    if (NULL == CU_add_test(pSuite, "test handle request client", test_handle_request_client)) {
-        CU_cleanup_registry();
-        return CU_get_error();
-    }
-
-    if (NULL == CU_add_test(pSuite, "test handle request not client", test_handle_request_not_client)) {
-        CU_cleanup_registry();
-        return CU_get_error();
-    }
-
-    if (NULL == CU_add_test(pSuite, "test handle request invalid request", test_handle_request_invalid_request)) {
-        CU_cleanup_registry();
-        return CU_get_error();
-    }
-
-    if (NULL == CU_add_test(pSuite, "test handle request client add stock", test_handle_request_client_add_stock)) {
-        CU_cleanup_registry();
-        return CU_get_error();
-    }
-
-    if (NULL == CU_add_test(pSuite, "test handle request out of bounds", test_handle_request_out_of_bounds)) {
         CU_cleanup_registry();
         return CU_get_error();
     }
