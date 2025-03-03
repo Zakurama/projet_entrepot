@@ -483,10 +483,6 @@ void *stock_manager(void *arg) {
     int *nb_items = args->nb_items;  // Récupère le pointeur vers nb_items
     free(args);  // Libère la mémoire de la structure allouée
 
-    printf("nb_items: %d\n", *nb_items);
-    printf("items: %p\n", (void *)*items);
-
-
     char command[MAXOCTETS];
 
     while (1) {
