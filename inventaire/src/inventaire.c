@@ -535,7 +535,7 @@ void *stock_manager(void *arg) {
            
         }
         else if(strcmp(command, "4")==0){
-            printf("Enter the itemName;number_row.column (itemName;N_X.Y,...)\n> ");
+            printf("Enter the itemName;number_row.column (itemName1;N_X.Y,N_X.Y,.../itemName2;N_X,Y,...)\n> ");
             fgets(command, sizeof(command), stdin);
             command[strcspn(command, "\n")] = 0; // Supprime le '\n'
             printf("Command : %s\n", command);
