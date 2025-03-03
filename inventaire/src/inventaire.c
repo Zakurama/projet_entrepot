@@ -488,6 +488,11 @@ void *stock_manager(void *arg) {
         command[strcspn(command, "\n")] = 0; // Supprime le '\n'
 
         if (strcmp(command, "1") == 0) {
+            printf("[MANAGER] Items : ");
+            for (int i = 0; i < *nb_items; i++) {
+                printf("%s ", (*items)[i].name);
+            }
+            printf("\n");
             printf("[MANAGER] Which item :\n");
             fgets(command, sizeof(command), stdin);
             command[strcspn(command, "\n")] = 0; // Supprime le '\n'
