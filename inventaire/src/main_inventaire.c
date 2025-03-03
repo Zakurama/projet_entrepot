@@ -6,15 +6,12 @@ int main(int argc, char *argv[]) {
     const char *item_placement = "5_1.1,5_2.2";
     int nb_items = 2;
     const int max_item_name_size= 500;
-    // printf("here1\n");
 
     // Allocate and initialize items
     item_t *items = malloc(nb_items * sizeof(item_t));
     for (int i = 0; i < 2; i++) {
-        // printf("here%d,1\n",i);
         items[i].stock = NULL; // Ensure stock is initialized
         init_stock(&items[i], nb_rows, nb_columns, item_placement);
-        // printf("here%d,2\n",i);
         items[i].name = malloc(max_item_name_size * sizeof(char));
         snprintf(items[i].name, max_item_name_size, "item%d", i);
     }

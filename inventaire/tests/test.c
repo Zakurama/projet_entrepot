@@ -119,29 +119,29 @@ void test_add_stock(void){
     }
 }
 
-// void test_add_stock_after_adding_size(void){
-//     int **stock;
-//     int nb_rows = 5;
-//     int nb_columns = 5;
-//     const char *item_placement = "5_1.1,5_2.2";
-//     init_stock(&stock, nb_rows, nb_columns, item_placement);
+void test_add_stock_after_adding_size(void){
+    int nb_rows = 5;
+    int nb_columns = 5;
+    const char *item_placement = "5_1.1,5_2.2";
+    item_t items[1];
+    items[0].stock = NULL;
+    init_stock(&items[0], nb_rows, nb_columns, item_placement);
 
-//     const int count = 1;
-//     int nb_supplementary_columns = 3;
-//     int nb_supplementary_rows = 2;
-//     add_row(&stock, &nb_rows, nb_columns, nb_supplementary_rows);
-//     add_column(&stock, nb_rows, &nb_columns, nb_supplementary_columns);
-//     int rows[1] = {nb_rows - 1};
-//     int columns[1] = {nb_columns - 1};
-//     int values[1] = {1};
+    const int count = 1;
+    int nb_supplementary_columns = 3;
+    int nb_supplementary_rows = 2;
+    add_row(items, count, &nb_rows, nb_columns, nb_supplementary_rows);
+    add_column(items, count, nb_rows, &nb_columns, nb_supplementary_columns);
+    int rows[1] = {nb_rows - 1};
+    int columns[1] = {nb_columns - 1};
+    int values[1] = {1};
     
-//     char *error_message = modify_stock(&stock, nb_rows, nb_columns, rows, columns, values, count);
-//     CU_ASSERT(error_message == NULL);
-
-//     for (int i = 0; i < count; i++){
-//         CU_ASSERT(stock[rows[i]][columns[i]] == NEW_STOCK_INIT_VALUE + values[i]);
-//     }
-// }
+    char *error_message = modify_stock(&items[0], nb_rows, nb_columns, rows, columns, values, count);
+    CU_ASSERT(error_message == NULL);
+    for (int i = 0; i < count; i++){
+        CU_ASSERT(items[0].stock[rows[i]][columns[i]] == NEW_STOCK_INIT_VALUE + values[i]);
+    }
+}
 
 void test_parse_message(void){
     const char *request = "1_1.1,1_2.2";
@@ -515,10 +515,10 @@ int main() {
         return CU_get_error();
     }
 
-    // if (NULL == CU_add_test(pSuite, "test add stock after adding size", test_add_stock_after_adding_size)) {
-    //     CU_cleanup_registry();
-    //     return CU_get_error();
-    // }
+    if (NULL == CU_add_test(pSuite, "test add stock after adding size", test_add_stock_after_adding_size)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
 
     if (NULL == CU_add_test(pSuite, "test parse message", test_parse_message)) {
         CU_cleanup_registry();
