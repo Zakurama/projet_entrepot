@@ -74,7 +74,7 @@ void print_stock(int **stock, int nb_rows, int nb_columns){
 
 void add_row(item_t *items, int nb_items, int *nb_rows, int nb_columns, int nb_supplementary_rows) {
     for (int k = 0; k < nb_items; k++) {
-        // Reallocate stock array for each item
+        // Reallocate stock array for each item 
         items[k].stock = (int **)realloc(items[k].stock, (*nb_rows + nb_supplementary_rows) * sizeof(int *));
         CHECK_ERROR(items[k].stock, NULL, "Failed to allocate memory for new rows");
 
