@@ -1,6 +1,13 @@
 #ifndef _TCP_H
 #define _TCP_H
 
+#include <stdio.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <string.h>
+
 #define MAXOCTETS   500
 #define MAXCLIENTS  100
 
