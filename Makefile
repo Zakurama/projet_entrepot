@@ -1,5 +1,6 @@
 INC_INV = -I./inventaire/include
 INC_ORDI = -I./ordinateur_central/include
+INC_ROBOT = -I./robot/include
 
 LIB_UTILS = ./utils/lib/
 INC_UTILS = -I./utils/include
@@ -29,6 +30,16 @@ inventaire/bin/client : inventaire/src/client.c $(LIB_UTILS)tcp.so
 inventaire/build/inventaire.o: inventaire/src/inventaire.c
 	gcc -c $(CFLAGS) $(INC_INV) $(INC_UTILS) $^ -o $@
 
+# Robot
+robot/build/marvelmind.o: robot/src/marvelmind.c
+	gcc -c $(CFLAGS) $(INC_ROBOT) $^ -o $@ -pthread
+
+robot/build/example.o: robot/src/rcv_marvelmind_pos.c
+	gcc -c $(CFLAGS) $(INC_ROBOT) $^ -o $@ -pthread
+
+robot/bin/marvelmind: robot/build/marvelmind.o robot/build/rcv_marvelmind_pos.o
+	gcc $(CFLAGS) $(INC_ROBOT) $^ -o $@ -pthread
+
 # Tests
 tests: tests/bin/test_ordinateur_central tests/bin/test_inventaire
 	./tests/bin/test_ordinateur_central
@@ -50,7 +61,7 @@ utils/build/tcp-fpic.o: utils/src/tcp.c
 	gcc -c -fPIC $(CFLAGS) $(INC_UTILS) $^ -o $@
 
 # Clean
-clean: clean_utils clean_ordi clean_inventaire clean_tests
+clean: clean_utils clean_ordi clean_inventaire clean_robot clean_tests 
 
 clean_tests:
 	rm -f tests/bin/*
@@ -63,3 +74,6 @@ clean_ordi:
 
 clean_inventaire:
 	rm -f inventaire/bin/* inventaire/build/*
+
+clean_robot:
+	rm -f robot/bin/* robot/build/*
