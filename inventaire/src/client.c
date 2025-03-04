@@ -23,7 +23,7 @@ int main(int argc, char *argv[]) {
      while (1) {
 
         // Envoi du message au serveur
-        printf("Send your order (N_X.Y,...)\nN : number of articles, (X,Y) position in the stock (row,colon) \nCommand 'stock' : display the stocks\n-> ");
+        printf("itemName_N,itemName_N,...\nN : number of articles, itemName the name of the wanted item\n-> ");
         fgets(buff_emission, MAXOCTETS, stdin);
         buff_emission[strlen(buff_emission) - 1] = '\0';
         send_message(sd,buff_emission);
