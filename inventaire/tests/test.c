@@ -243,16 +243,16 @@ void test_add_item(void) {
     int nb_items = 0;
     int nb_columns = 5;
     int nb_rows = 5;
-    item_t item1 = {"item1", NULL, 5};
-    item_t item2 = {"item2", NULL, 5};
-    add_item(&items, &nb_items, item1, nb_columns, nb_rows);
-    add_item(&items, &nb_items, item2, nb_columns, nb_rows);
+    item_t item1 = {"item1", NULL, 0};
+    item_t item2 = {"item2", NULL, 0};
+    add_item(&items, &nb_items, item1, &nb_columns, &nb_rows);
+    add_item(&items, &nb_items, item2, &nb_columns, &nb_rows);
     CU_ASSERT(nb_items == 2);
     CU_ASSERT_STRING_EQUAL(items[0].name, "item1");
-    CU_ASSERT(items[0].quantity == 5);
+    CU_ASSERT(items[0].quantity == 0);
     CU_ASSERT(items[0].stock != NULL);
     CU_ASSERT_STRING_EQUAL(items[1].name, "item2");
-    CU_ASSERT(items[1].quantity == 5);
+    CU_ASSERT(items[1].quantity == 0);
     CU_ASSERT(items[1].stock != NULL);
 }
 

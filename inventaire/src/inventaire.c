@@ -587,11 +587,13 @@ void add_item(item_t **items, int *nb_items, item_t item, int *nb_columns, int *
     CHECK_ERROR((*items)[*nb_items].name, NULL, "Failed to allocate memory for item name");
     
     item.stock = NULL;
-    init_stock(&item, *nb_rows, *nb_columns, "0_1.1");
 
     strcpy((*items)[*nb_items].name, item.name);
-    (*items)[*nb_items].stock = item.stock;
     (*items)[*nb_items].quantity = item.quantity;
+
+    init_stock(&item, *nb_rows, *nb_columns, "0_1.1"); 
+    (*items)[*nb_items].stock = item.stock;
+    
 
     (*nb_items)++;
 }
