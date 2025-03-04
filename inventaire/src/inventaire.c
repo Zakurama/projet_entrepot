@@ -419,7 +419,13 @@ void *handle_client(void *arg) {
 
     while (1) {
         // Réception du message de la part du lecteur
-        recev_message(client_sd, buff_reception);
+        int nb_car = recv(client_sd, buff_reception, MAXOCTETS, 0);
+        CHECK_ERROR(nb_car, -1, "\nProblème de réception !!!\n");
+        if (nb_car == 0) { // Si le serveur se déconnecte
+            pthread_exit(NULL);
+        }
+
+        buff_reception[nb_car] = '\0';
         strcpy(buff_emission, "");
 
         if (strcmp(buff_reception, "stock") == 0) {
