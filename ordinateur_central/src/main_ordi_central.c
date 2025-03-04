@@ -43,7 +43,7 @@ int shm[NB_ROBOT];
 size_t size_robot = sizeof(Robot);
 Robot* robots[NB_ROBOT];
 
-sem_t* mutex_memoire_robot[NB_ROBOT];
+sem_t* sem_memoire_robot[NB_ROBOT];
 
 int main(int argc, char *argv[]) {
     
@@ -70,8 +70,8 @@ int main(int argc, char *argv[]) {
         CHECK_MAP(robots[i] = mmap(0, size_robot, PROT_READ | PROT_WRITE, MAP_SHARED, shm[i], 0),"mmap");
 
         // Gestion des mutex pour l'acces memoire
-        sprintf(mutex_name, "mutex_memoire_robot[%d]", i);
-        CHECK_S(mutex_memoire_robot[i] = sem_open(mutex_name,O_CREAT|O_EXCL,0666,1),"sem_open(mutex_memoire_robot)");
+        sprintf(mutex_name, "sem_memoire_robot[%d]", i);
+        CHECK_S(sem_memoire_robot[i] = sem_open(mutex_name,O_CREAT|O_EXCL,0666,1),"sem_open(sem_memoire_robot)");
 
     }
 
@@ -132,34 +132,34 @@ void bye(){
         CHECK(shm_unlink(nom_memoire),"shm_unlink(robots_data)");
 
         // Fermeture et supression des sémaphores nommées
-        sprintf(mutex_name, "mutex_memoire_robot[%d]", i);
-        CHECK(sem_close(mutex_memoire_robot[i]),"sem_close(mutex_memoire_robot)");
-        CHECK(sem_unlink(mutex_name),"sem_unlink(mutex_memoire_robot)");
+        sprintf(mutex_name, "sem_memoire_robot[%d]", i);
+        CHECK(sem_close(sem_memoire_robot[i]),"sem_close(sem_memoire_robot)");
+        CHECK(sem_unlink(mutex_name),"sem_unlink(sem_memoire_robot)");
     }
 }
 
 void gestionnaire_inventaire(void){
-    char* buffer_reception_ID_articles[50];
-    char* buffer_reception_pos_articles[50];
-    int se;
-    int ID_articles[MAX_ARTICLES_LISTE_ATTENTE];
-    int positions_possibles_articles[MAX_ARTICLES_LISTE_ATTENTE][MAX_ESPACE_STOCK];
-    int positions_choisies_articles[MAX_ARTICLES_LISTE_ATTENTE];
-    int ID_robot;
-    // Initialiser une connexion TCP avec l'inventaire
-    init_tcp_socket(&se,INVENTORY_IP,INVENTORY_PORT,0);
+    // char* buffer_reception_ID_articles[50];
+    // char* buffer_reception_pos_articles[50];
+    // int se;
+    // int ID_articles[MAX_ARTICLES_LISTE_ATTENTE];
+    // int positions_possibles_articles[MAX_ARTICLES_LISTE_ATTENTE][MAX_ESPACE_STOCK];
+    // int positions_choisies_articles[MAX_ARTICLES_LISTE_ATTENTE];
+    // int ID_robot;
+    // // Initialiser une connexion TCP avec l'inventaire
+    // init_tcp_socket(&se,INVENTORY_IP,INVENTORY_PORT,0);
     while (1){
 
         // On attend une commande de l'inventaire
-        recev_message(se,buffer_reception_ID_articles); // la liste des articles (ID)
-        recev_message(se,buffer_reception_pos_articles); // la liste des positions
+        // recev_message(se,buffer_reception_ID_articles); // la liste des articles (ID)
+        // recev_message(se,buffer_reception_pos_articles); // la liste des positions
 
         // On extrait les articles demandés et leurs positions
         // TODO : Faire du parsing
 
 
         // On choisit le robot qui traitera la tâche et la position de l'article souhaité en stock
-        ID_robot = rand()%NB_ROBOT; // Pour l'instant pas de choix optimal du robot
+        // ID_robot = rand()%NB_ROBOT; // Pour l'instant pas de choix optimal du robot
 
         // On met à jour la liste des articles et la liste de position du robot
         // TODO
@@ -179,9 +179,9 @@ void gestion_robot(int no){
         while(waypoints == NULL){
             // On attend
             sleep(2);
-            CHECK(sem_wait(mutex_memoire_robot[no]),"sem_post(mutex_memoire_robot)");
+            CHECK(sem_wait(sem_memoire_robot[no]),"sem_post(sem_memoire_robot)");
             waypoints = robots[no]->waypoints;
-            CHECK(sem_post(mutex_memoire_robot[no]),"sem_post(mutex_memoire_robot)");
+            CHECK(sem_post(sem_memoire_robot[no]),"sem_post(sem_memoire_robot)");
         }
         // Des waypoints ont été ajoutés
         // Traitons les

@@ -20,7 +20,7 @@ jobs:
           sudo apt install -y build-essential pkg-config libcunit1-dev
 
       - name: Build project
-        run: make -C inventaire
+        run: make
 
       - name: Run tests
-        run: make -C inventaire tests
+        run: make tests
