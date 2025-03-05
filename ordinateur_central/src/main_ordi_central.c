@@ -1,20 +1,3 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <sys/fcntl.h>
-#include <errno.h>
-#include <time.h>
-#include <sched.h>
-#include <signal.h>
-#include <sys/wait.h>
-#include <string.h>
-#include <sys/types.h>          
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <semaphore.h>
-#include <sys/mman.h>
-
 #include "tcp.h"
 #include "utils.h"
 #include "ordi_central.h"
