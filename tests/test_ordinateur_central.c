@@ -106,7 +106,7 @@ void test_parse_client_request_good_request(void) {
     }
 
     int count;
-    char *response = parse_client_request(request, L_n, maxitems, item_names, &count);
+    char *response = parse_client_request(request, maxitems, L_n, item_names, &count);
 
     // Validate results
     CU_ASSERT_PTR_NULL(response); // Check if there was no error
@@ -133,7 +133,7 @@ void test_parse_client_request_invalid_format(void) {
     }
 
     int count;
-    char *response = parse_client_request(request, L_n, maxitems, item_names, &count);
+    char *response = parse_client_request(request, maxitems, L_n, item_names, &count);
 
     // Validate results
     CU_ASSERT_PTR_NOT_NULL(response); // Check if there was an error
@@ -156,7 +156,7 @@ void test_parse_client_request_too_many_items(void) {
     }
 
     int count;
-    char *response = parse_client_request(request, L_n, maxitems, item_names, &count);
+    char *response = parse_client_request(request, maxitems, L_n, item_names, &count);
 
     // Validate results
     CU_ASSERT_PTR_NOT_NULL(response); // Check if there was an error
@@ -179,7 +179,7 @@ void test_parse_client_request_empty_request(void) {
     }
 
     int count;
-    char *response = parse_client_request(request, L_n, maxitems, item_names, &count);
+    char *response = parse_client_request(request, maxitems, L_n, item_names, &count);
 
     // Validate results
     CU_ASSERT_PTR_NULL(response); // Check if there was no error

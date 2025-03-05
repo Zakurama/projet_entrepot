@@ -186,7 +186,7 @@ void gestionnaire_inventaire(int se){
 }
 
 // message format: "itemName_N,itemName_N,..."
-char *parse_client_request(const char *request, int *L_n, int max_elements, char *item_names[max_elements], int *count){
+char *parse_client_request(const char *request, int max_elements, int L_n[max_elements], char *item_names[max_elements], int *count){
     char temp[strlen(request) + 1];
     strcpy(temp, request); // Create a modifiable copy of the string
     char name[MAX_ITEMS_NAME_SIZE];
@@ -206,4 +206,9 @@ char *parse_client_request(const char *request, int *L_n, int max_elements, char
         token = strtok(NULL, ",");
     }
     return NULL;
+}
+
+// message format: "itemName1;N_X.Y,N_X.Y,.../itemName2;N_X.Y,..
+char *parse_stock(){
+
 }
