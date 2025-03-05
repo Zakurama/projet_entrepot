@@ -1,20 +1,3 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <sys/fcntl.h>
-#include <errno.h>
-#include <time.h>
-#include <sched.h>
-#include <signal.h>
-#include <sys/wait.h>
-#include <string.h>
-#include <sys/types.h>          
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <semaphore.h>
-#include <sys/mman.h>
-
 #include "tcp.h"
 #include "utils.h"
 #include "ordi_central.h"
@@ -29,7 +12,6 @@ int ports[NB_ROBOT] = {3000,8000};
 char ip[IP_SIZE];
 
 void bye();
-void gestionnaire_inventaire(void);
 void gestion_robot(int no);
 
 typedef struct {
@@ -94,7 +76,8 @@ int main(int argc, char *argv[]) {
             CHECK(sigprocmask(SIG_SETMASK , &OldMask , NULL), "sigprocmask()");
             if(i==0){
                 // Gestionnaire communication inventaire
-                gestionnaire_inventaire();
+                int se_inventaire = 0; // la définir au préalable
+                gestionnaire_inventaire(se_inventaire);
             }
             if(i>0 && i<=NB_ROBOT){
                 // Processus de gestion des robots
@@ -135,37 +118,6 @@ void bye(){
         sprintf(mutex_name, "sem_memoire_robot[%d]", i);
         CHECK(sem_close(sem_memoire_robot[i]),"sem_close(sem_memoire_robot)");
         CHECK(sem_unlink(mutex_name),"sem_unlink(sem_memoire_robot)");
-    }
-}
-
-void gestionnaire_inventaire(void){
-    // char* buffer_reception_ID_articles[50];
-    // char* buffer_reception_pos_articles[50];
-    // int se;
-    // int ID_articles[MAX_ARTICLES_LISTE_ATTENTE];
-    // int positions_possibles_articles[MAX_ARTICLES_LISTE_ATTENTE][MAX_ESPACE_STOCK];
-    // int positions_choisies_articles[MAX_ARTICLES_LISTE_ATTENTE];
-    // int ID_robot;
-    // // Initialiser une connexion TCP avec l'inventaire
-    // init_tcp_socket(&se,INVENTORY_IP,INVENTORY_PORT,0);
-    while (1){
-
-        // On attend une commande de l'inventaire
-        // recev_message(se,buffer_reception_ID_articles); // la liste des articles (ID)
-        // recev_message(se,buffer_reception_pos_articles); // la liste des positions
-
-        // On extrait les articles demandés et leurs positions
-        // TODO : Faire du parsing
-
-
-        // On choisit le robot qui traitera la tâche et la position de l'article souhaité en stock
-        // ID_robot = rand()%NB_ROBOT; // Pour l'instant pas de choix optimal du robot
-
-        // On met à jour la liste des articles et la liste de position du robot
-        // TODO
-
-        // On informe l'inventaire qu'on a bien pris en compte sa demande (on indique quels articles de l'inventaire vont être pris)
-        // TODO
     }
 }
 

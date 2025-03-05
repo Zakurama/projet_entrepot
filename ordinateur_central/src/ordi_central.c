@@ -1,7 +1,7 @@
-#include <string.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include "ordi_central.h"
+#include "utils.h"
+#include "tcp.h"
+#include "inventaire.h"
 
 void trajectoire(const char* pos_initiale, const char* pos_finale, char path[MAX_WAYPOINTS][SIZE_POS]){
 
@@ -147,4 +147,123 @@ void trajectoire(const char* pos_initiale, const char* pos_finale, char path[MAX
         type_pos = path[i][0];
         i++;
     }
+}
+
+void gestionnaire_inventaire(int se){
+    char buffer_reception_ID_articles[MAXOCTETS];
+    char buffer_reception_pos_articles[MAXOCTETS];
+    // int ID_articles[MAX_ARTICLES_LISTE_ATTENTE];
+    // int positions_possibles_articles[MAX_ARTICLES_LISTE_ATTENTE][MAX_ESPACE_STOCK];
+    // int positions_choisies_articles[MAX_ARTICLES_LISTE_ATTENTE];
+    // int ID_robot;
+    // // Initialiser une connexion TCP avec l'inventaire
+    while (1){
+
+        // On attend une commande de l'inventaire
+        recev_message(se, buffer_reception_ID_articles); // la liste des articles (ID)
+        recev_message(se, buffer_reception_pos_articles); // la liste des positions
+
+        // On extrait les articles demandés et leurs positions
+        // TODO : Faire du parsing
+        char *item_names_requested[MAX_ARTICLES_LISTE_ATTENTE];
+        int L_n_requested[MAX_ARTICLES_LISTE_ATTENTE];
+        int count;
+        char *error = parse_client_request(buffer_reception_ID_articles, MAX_ARTICLES_LISTE_ATTENTE, L_n_requested, item_names_requested, &count);
+        if (error != NULL) {
+            fprintf(stderr, "Error in parse client request: %s\n", error);
+            continue;
+        }
+
+        int *L_n_stock[MAX_ARTICLES_LISTE_ATTENTE]; // liste des valeurs sur une position par article
+        int *L_x_stock[MAX_ARTICLES_LISTE_ATTENTE]; // liste des allées par article
+        int *L_y_stock[MAX_ARTICLES_LISTE_ATTENTE]; // liste des bacs par article
+        char *item_names_stock[MAX_ARTICLES_LISTE_ATTENTE];
+        int count_stock[MAX_ARTICLES_LISTE_ATTENTE]; // nombre de positions par article
+        int nb_items;
+
+        char *response = parse_stock(buffer_reception_pos_articles, MAX_ARTICLES_LISTE_ATTENTE, L_n_stock, L_x_stock, L_y_stock, item_names_stock, count_stock, &nb_items);
+        if (response!=NULL){
+            fprintf(stderr, "Error in parse stock request: %s\n", error);
+            continue;
+        }
+
+
+        // On choisit le robot qui traitera la tâche et la position de l'article souhaité en stock
+        // ID_robot = rand()%NB_ROBOT; // Pour l'instant pas de choix optimal du robot
+
+        // On met à jour la liste des articles et la liste de position du robot
+        // TODO
+
+        // On informe l'inventaire qu'on a bien pris en compte sa demande (on indique quels articles de l'inventaire vont être pris)
+        // TODO
+    }
+}
+
+// message format: "itemName_N,itemName_N,..."
+char *parse_client_request(const char *request, int max_elements, int L_n[max_elements], char *item_names[max_elements], int *count){
+    char temp[strlen(request) + 1];
+    strcpy(temp, request); // Create a modifiable copy of the string
+    char name[MAX_ITEMS_NAME_SIZE];
+
+    char *token = strtok(temp, ",");
+    *count = 0;
+    while (token != NULL){
+        if(*count >= max_elements){
+            return "Too many items requested\n";
+        }
+        if (sscanf(token, "%[^_]_%d", name, &L_n[*count]) != 2){
+            return "Invalid request format\n";
+        }
+
+        item_names[*count] = strdup(name);
+        (*count)++;
+        token = strtok(NULL, ",");
+    }
+    return NULL;
+}
+
+// message format: "itemName1;N_X.Y,N_X.Y,.../itemName2;N_X.Y,..
+char *parse_stock(const char *request, int max_elements, int *L_n[max_elements], int *L_x[max_elements], int *L_y[max_elements], char *item_names[max_elements], int count[max_elements], int *nb_items_request){
+    char temp[strlen(request) + 1];
+    strcpy(temp, request); // Create a modifiable copy of the string
+
+    *nb_items_request = 0;
+    char *item_token = strtok(temp, "/");
+    if (item_token == NULL){
+        return "Invalid request format\n";
+    }
+    while (item_token != NULL){
+        char item_token_copy[strlen(item_token) + 1];
+        strcpy(item_token_copy, item_token);
+        char *name = strtok(item_token_copy, ";");
+        char *positions = strtok(NULL, ";");
+
+        if (name == NULL || positions == NULL){
+            return "Invalid request format\n";
+        }
+        if (*nb_items_request >= max_elements) {
+            return "Too many items requested\n";
+        }
+
+        strcpy(item_names[*nb_items_request], name);
+        
+        char *return_parse_message = parse_message(positions, L_n[*nb_items_request], L_x[*nb_items_request], L_y[*nb_items_request], &count[*nb_items_request], max_elements);
+        if (return_parse_message != NULL){
+            return return_parse_message;
+        }
+
+        (*nb_items_request)++;
+        strcpy(temp, request);
+        item_token = strtok(temp, "/");
+        for (int i = 0; i < *nb_items_request; i++){
+            item_token = strtok(NULL, "/");
+        }
+    }
+    for (int i=0; i<*nb_items_request; i++){
+        for (int j=0; j<count[i]; j++){
+            L_x[i][j] -= 1;
+            L_y[i][j] -= 1;
+        }
+    }
+    return NULL;
 }
