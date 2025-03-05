@@ -178,10 +178,10 @@ void gestionnaire_inventaire(int se){
         int *L_x_stock[MAX_ARTICLES_LISTE_ATTENTE]; // liste des allées par article
         int *L_y_stock[MAX_ARTICLES_LISTE_ATTENTE]; // liste des bacs par article
         char *item_names_stock[MAX_ARTICLES_LISTE_ATTENTE];
-        int count[MAX_ARTICLES_LISTE_ATTENTE]; // nombre de positions par article
+        int count_stock[MAX_ARTICLES_LISTE_ATTENTE]; // nombre de positions par article
         int nb_items;
 
-        char *response = parse_stock(buffer_reception_pos_articles, MAX_ARTICLES_LISTE_ATTENTE, L_n_stock, L_x_stock, L_y_stock, item_names_stock, count, &nb_items);
+        char *response = parse_stock(buffer_reception_pos_articles, MAX_ARTICLES_LISTE_ATTENTE, L_n_stock, L_x_stock, L_y_stock, item_names_stock, count_stock, &nb_items);
         if (response!=NULL){
             fprintf(stderr, "Error in parse stock request: %s\n", error);
             continue;
@@ -229,6 +229,9 @@ char *parse_stock(const char *request, int max_elements, int *L_n[max_elements],
 
     *nb_items_request = 0;
     char *item_token = strtok(temp, "/");
+    if (item_token == NULL){
+        return "Invalid request format\n";
+    }
     while (item_token != NULL){
         char item_token_copy[strlen(item_token) + 1];
         strcpy(item_token_copy, item_token);

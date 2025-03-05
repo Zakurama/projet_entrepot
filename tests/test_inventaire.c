@@ -493,7 +493,7 @@ int main() {
     if (CUE_SUCCESS != CU_initialize_registry())
         return CU_get_error();
 
-    pSuite = CU_add_suite("Test Suite", NULL, NULL);
+    pSuite = CU_add_suite("Test Inventaire", NULL, NULL);
     if (NULL == pSuite) {
         CU_cleanup_registry();
         return CU_get_error();

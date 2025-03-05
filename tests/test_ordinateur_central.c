@@ -322,8 +322,7 @@ void test_parse_stock_empty_request(void) {
     char *response = parse_stock(request, max_elements, L_n, L_x, L_y, item_names, count, &nb_items_request);
 
     // Validate results
-    CU_ASSERT_PTR_NULL(response); // Check if there was no error
-    CU_ASSERT_EQUAL(count[0], 0);
+    CU_ASSERT_STRING_EQUAL(response, "Invalid request format\n");
 
     // Cleanup memory
     for (int i = 0; i < max_elements; i++) {
@@ -337,7 +336,7 @@ void test_parse_stock_empty_request(void) {
 int main() {
     CU_initialize_registry();
 
-    CU_pSuite suite = CU_add_suite("Tests Trajectoire", NULL, NULL);
+    CU_pSuite suite = CU_add_suite("Tests Ordinateur Central", NULL, NULL);
 
     CU_add_test(suite, "Trajectoire de D25 à S14", test_trajectoire_D25_S14);
     CU_add_test(suite, "Trajectoire de S14 à S11", test_trajectoire_S14_S11);

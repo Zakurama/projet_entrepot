@@ -13,7 +13,7 @@ CUNIT_LDFLAGS=$(shell PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) pkg-config --libs cunit
 all : ordinateur_central/bin/ordinateur_central inventaire/bin/inventaire inventaire/bin/client libs
 
 # Ordinateur Central
-ordinateur_central/bin/ordinateur_central: ordinateur_central/src/main_ordi_central.c ordinateur_central/build/ordi_central.o $(LIB_UTILS)tcp.so
+ordinateur_central/bin/ordinateur_central: ordinateur_central/src/main_ordi_central.c ordinateur_central/build/ordi_central.o inventaire/build/inventaire.o $(LIB_UTILS)tcp.so
 	gcc $(CFLAGS) $(INC_ORDI) $(INC_UTILS) $^ -o $@ 
 
 ordinateur_central/build/ordi_central.o: ordinateur_central/src/ordi_central.c
