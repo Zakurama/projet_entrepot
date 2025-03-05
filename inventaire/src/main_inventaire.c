@@ -18,15 +18,26 @@ int main(int argc, char *argv[]) {
 
     int se;
     int client_sd;
+    int computer_sd;
 
     if (argc == 2){
         init_tcp_socket(&se, argv[1], LOCALPORT,1);
+        init_tcp_socket(&computer_sd, REMOTEIP, REMOTEPORT,0);
     } 
     else if (argc == 3){ 
         init_tcp_socket(&se, argv[1], (u_int16_t) atoi(argv[2]),1);
+        init_tcp_socket(&computer_sd, REMOTEIP, REMOTEPORT,0);
+    }
+    else if (argc ==4){
+        init_tcp_socket(&se, argv[1], (u_int16_t) atoi(argv[2]),1);
+        init_tcp_socket(&computer_sd, argv[3], REMOTEPORT,0);
+    }
+    else if (argc==5){
+        init_tcp_socket(&se, argv[1], (u_int16_t) atoi(argv[2]),1);
+        init_tcp_socket(&computer_sd, argv[3], (u_int16_t) atoi(argv[4]),0);
     }
     else {
-        fprintf(stderr, "Usage: %s <local_ip> [<local_port>]\n", argv[0]);
+        fprintf(stderr, "Usage: %s <local_ip> [<local_port> <remote_ip> <remote_port>]\n", argv[0]);
         exit(EXIT_FAILURE);
     }
 
@@ -53,6 +64,7 @@ int main(int argc, char *argv[]) {
         args->client_sd = client_sd;
         args->items = &items;
         args->nb_items = &nb_items;
+        args->computer_sd = computer_sd;
 
         pthread_create(&client_thread, NULL, handle_client, (void *)args);
         pthread_detach(client_thread); // Évite les fuites mémoire

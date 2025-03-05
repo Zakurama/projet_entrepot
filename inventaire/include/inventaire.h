@@ -11,6 +11,8 @@
 #include "tcp.h"
 
 #define LOCALPORT   3000
+#define REMOTEIP "127.0.0.1"
+#define REMOTEPORT 5000
 
 #define STOCK_INIT  5
 #define NEW_STOCK_INIT_VALUE 0

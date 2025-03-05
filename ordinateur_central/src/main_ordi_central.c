@@ -4,8 +4,8 @@
 
 #define IP_SIZE 16
 #define DEFAULT_LOCALIP "127.0.0.1"
-#define INVENTORY_IP "127.0.0.1"
-#define INVENTORY_PORT 5000
+#define LOCAL_IP "127.0.0.1"
+#define LOCAL_PORT 5000
 
 int ports[NB_ROBOT] = {3000,8000};
 
@@ -77,6 +77,7 @@ int main(int argc, char *argv[]) {
             if(i==0){
                 // Gestionnaire communication inventaire
                 int se_inventaire = 0; // la définir au préalable
+                init_tcp_socket(&se_inventaire,LOCAL_IP,LOCAL_PORT,1);
                 gestionnaire_inventaire(se_inventaire);
             }
             if(i>0 && i<=NB_ROBOT){
@@ -122,25 +123,26 @@ void bye(){
 }
 
 void gestion_robot(int no){
-    int se;
-    init_tcp_socket(&se,ip,ports[no],1);
-    char buff_emission[MAX_WAYPOINTS];
-    char buff_reception[50];
-    while (1){
-        int* waypoints = NULL;
-        while(waypoints == NULL){
-            // On attend
-            sleep(2);
-            CHECK(sem_wait(sem_memoire_robot[no]),"sem_post(sem_memoire_robot)");
-            waypoints = robots[no]->waypoints;
-            CHECK(sem_post(sem_memoire_robot[no]),"sem_post(sem_memoire_robot)");
-        }
-        // Des waypoints ont été ajoutés
-        // Traitons les
-        send_message(se,buff_emission);
-        recev_message(se,buff_reception);
-        // A finir
+    while(1);
+    // int se;
+    // init_tcp_socket(&se,ip,ports[no],1);
+    // char buff_emission[MAX_WAYPOINTS];
+    // char buff_reception[50];
+    // while (1){
+    //     int* waypoints = NULL;
+    //     while(waypoints == NULL){
+    //         // On attend
+    //         sleep(2);
+    //         CHECK(sem_wait(sem_memoire_robot[no]),"sem_post(sem_memoire_robot)");
+    //         waypoints = robots[no]->waypoints;
+    //         CHECK(sem_post(sem_memoire_robot[no]),"sem_post(sem_memoire_robot)");
+    //     }
+    //     // Des waypoints ont été ajoutés
+    //     // Traitons les
+    //     send_message(se,buff_emission);
+    //     recev_message(se,buff_reception);
+    //     // A finir
 
-    }
-    close_socket(&se);
+    // }
+    // close_socket(&se);
 }

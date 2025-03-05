@@ -449,24 +449,24 @@ void *handle_client(void *arg) {
             else {
                 
                 // temporary until the central computer is implemented
-                strcpy(buff_emission, "Sending request to central computer\n");
+                //strcpy(buff_emission, "Sending request to central computer\n");
 
-                // send_message(computer_sd, buff_reception);
-                // char **item_names;
-                // int nb_items_request;
-                // item_names = parse_items_names(*items, *nb_items, buff_reception, &nb_items_request);
-                // strcpy(buff_emission, transfer_stock(*items, *nb_items, *nb_rows, *nb_columns, item_names, nb_items_request));
-                // send_message(computer_sd ,buff_emission);
+                send_message(computer_sd, buff_reception);
+                
+                int nb_items_request;
+                char **item_names = parse_items_names(*items, *nb_items, buff_reception, &nb_items_request);
+                strcpy(buff_emission, transfer_stock(*items, *nb_items, *nb_rows, *nb_columns,(const char **) item_names, nb_items_request));
+                send_message(computer_sd ,buff_emission);
 
-                // recev_message(computer_sd, buff_reception);
-                // pthread_mutex_lock(&stock_mutex);
-                // char *response = handle_items_request(*items, *nb_items, *nb_rows, *nb_columns, buff_reception, 1);
-                // pthread_mutex_unlock(&stock_mutex);
-                // if (response != NULL) {
-                //     strcpy(buff_emission, response);
-                // } else {
-                //     strcpy(buff_emission, "Stock updated successfully\n");
-                // }
+                recev_message(computer_sd, buff_reception);
+                pthread_mutex_lock(&stock_mutex);
+                char *response = handle_items_request(*items, *nb_items, *nb_rows, *nb_columns, buff_reception, 1);
+                pthread_mutex_unlock(&stock_mutex);
+                if (response != NULL) {
+                    strcpy(buff_emission, response);
+                } else {
+                    strcpy(buff_emission, "Stock updated successfully\n");
+                }
 
             }
             

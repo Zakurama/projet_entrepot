@@ -173,20 +173,22 @@ void gestionnaire_inventaire(int se){
     // int ID_articles[MAX_ARTICLES_LISTE_ATTENTE];
     // int positions_possibles_articles[MAX_ARTICLES_LISTE_ATTENTE][MAX_ESPACE_STOCK];
     // int positions_choisies_articles[MAX_ARTICLES_LISTE_ATTENTE];
-    // int ID_robot;
-    // // Initialiser une connexion TCP avec l'inventaire
+    int ID_robot = 0;
+    listen_to(se);
+    int client_sd = accept_client(se);
     while (1){
 
         // On attend une commande de l'inventaire
-        recev_message(se, buffer_reception_ID_articles); // la liste des articles (ID)
-        recev_message(se, buffer_reception_pos_articles); // la liste des positions
+        recev_message(client_sd, buffer_reception_ID_articles); // la liste des articles (ID)
+        recev_message(client_sd, buffer_reception_pos_articles); // la liste des positions
+        printf("COUOU\n");
 
         // On extrait les articles demandés et leurs positions
-        // TODO : Faire du parsing
         char *item_names_requested[MAX_ARTICLES_LISTE_ATTENTE];
         int L_n_requested[MAX_ARTICLES_LISTE_ATTENTE];
         int count;
-        char *error = parse_client_request(buffer_reception_ID_articles, MAX_ARTICLES_LISTE_ATTENTE, L_n_requested, item_names_requested, &count);
+        char *error = malloc(MAXOCTETS * sizeof(char));
+        strcpy(error, parse_client_request(buffer_reception_ID_articles, MAX_ARTICLES_LISTE_ATTENTE, L_n_requested, item_names_requested, &count));
         if (error != NULL) {
             fprintf(stderr, "Error in parse client request: %s\n", error);
             continue;
@@ -204,10 +206,12 @@ void gestionnaire_inventaire(int se){
             fprintf(stderr, "Error in parse stock request: %s\n", error);
             continue;
         }
-
+        printf("Nombre d'item : %d\n",nb_items);
 
         // On choisit le robot qui traitera la tâche et la position de l'article souhaité en stock
-        // ID_robot = rand()%NB_ROBOT; // Pour l'instant pas de choix optimal du robot
+        ID_robot = (ID_robot+1)%NB_ROBOT; // Pour l'instant pas de choix optimal du robot on prends juste à son tour robot 1
+
+
 
         // On met à jour la liste des articles et la liste de position du robot
         // TODO
