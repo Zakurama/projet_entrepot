@@ -333,6 +333,118 @@ void test_parse_stock_empty_request(void) {
     }
 }
 
+void test_create_inventory_string(void) {
+    int max_elements = 50;
+    int *L_n[max_elements];
+    int *L_x[max_elements];
+    int *L_y[max_elements];
+    char *item_names[max_elements];
+    int count[max_elements];
+    int nb_items = 3;
+
+    for (int i = 0; i < max_elements; i++) {
+        L_n[i] = malloc(max_elements * sizeof(int));
+        L_x[i] = malloc(max_elements * sizeof(int));
+        L_y[i] = malloc(max_elements * sizeof(int));
+        item_names[i] = malloc(MAX_ITEMS_NAME_SIZE * sizeof(char));
+    }
+
+    // Initialize test data
+    count[0] = 2;
+    strcpy(item_names[0], "item0");
+    L_n[0][0] = 2; L_x[0][0] = 1; L_y[0][0] = 1;
+    L_n[0][1] = 2; L_x[0][1] = 2; L_y[0][1] = 2;
+
+    count[1] = 1;
+    strcpy(item_names[1], "item1");
+    L_n[1][0] = 1; L_x[1][0] = 3; L_y[1][0] = 3;
+
+    count[2] = 1;
+    strcpy(item_names[2], "item2");
+    L_n[2][0] = 1; L_x[2][0] = 4; L_y[2][0] = 4;
+
+    char *inventory_string = create_inventory_string(nb_items, max_elements, count, L_n, L_x, L_y, item_names);
+
+    // Validate results
+    CU_ASSERT_STRING_EQUAL(inventory_string, "item0;2_1.1,2_2.2/item1;1_3.3/item2;1_4.4");
+
+    // Cleanup memory
+    free(inventory_string);
+    for (int i = 0; i < max_elements; i++) {
+        free(L_n[i]);
+        free(L_x[i]);
+        free(L_y[i]);
+        free(item_names[i]);
+    }
+}
+
+void test_create_inventory_string_empty(void) {
+    int max_elements = 50;
+    int *L_n[max_elements];
+    int *L_x[max_elements];
+    int *L_y[max_elements];
+    char *item_names[max_elements];
+    int count[max_elements];
+    int nb_items = 0;
+
+    for (int i = 0; i < max_elements; i++) {
+        L_n[i] = malloc(max_elements * sizeof(int));
+        L_x[i] = malloc(max_elements * sizeof(int));
+        L_y[i] = malloc(max_elements * sizeof(int));
+        item_names[i] = malloc(MAX_ITEMS_NAME_SIZE * sizeof(char));
+    }
+
+    char *inventory_string = create_inventory_string(nb_items, max_elements, count, L_n, L_x, L_y, item_names);
+
+    // Validate results
+    CU_ASSERT_STRING_EQUAL(inventory_string, "");
+
+    // Cleanup memory
+    free(inventory_string);
+    for (int i = 0; i < max_elements; i++) {
+        free(L_n[i]);
+        free(L_x[i]);
+        free(L_y[i]);
+        free(item_names[i]);
+    }
+}
+
+void test_create_inventory_string_single_item(void) {
+    int max_elements = 50;
+    int *L_n[max_elements];
+    int *L_x[max_elements];
+    int *L_y[max_elements];
+    char *item_names[max_elements];
+    int count[max_elements];
+    int nb_items = 1;
+
+    for (int i = 0; i < max_elements; i++) {
+        L_n[i] = malloc(max_elements * sizeof(int));
+        L_x[i] = malloc(max_elements * sizeof(int));
+        L_y[i] = malloc(max_elements * sizeof(int));
+        item_names[i] = malloc(MAX_ITEMS_NAME_SIZE * sizeof(char));
+    }
+
+    // Initialize test data
+    count[0] = 1;
+    strcpy(item_names[0], "item0");
+    L_n[0][0] = 2; L_x[0][0] = 1; L_y[0][0] = 1;
+
+    char *inventory_string = create_inventory_string(nb_items, max_elements, count, L_n, L_x, L_y, item_names);
+
+    // Validate results
+    CU_ASSERT_STRING_EQUAL(inventory_string, "item0;2_1.1");
+
+    // Cleanup memory
+    free(inventory_string);
+    for (int i = 0; i < max_elements; i++) {
+        free(L_n[i]);
+        free(L_x[i]);
+        free(L_y[i]);
+        free(item_names[i]);
+    }
+}
+
 int main() {
     CU_initialize_registry();
 
@@ -385,6 +497,21 @@ int main() {
     }
 
     if (NULL == CU_add_test(suite, "test parse stock empty request", test_parse_stock_empty_request)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
+    if (NULL == CU_add_test(suite, "test create inventory string", test_create_inventory_string)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
+    if (NULL == CU_add_test(suite, "test create inventory string empty", test_create_inventory_string_empty)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
+    if (NULL == CU_add_test(suite, "test create inventory string single item", test_create_inventory_string_single_item)) {
         CU_cleanup_registry();
         return CU_get_error();
     }
