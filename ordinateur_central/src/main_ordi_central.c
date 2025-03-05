@@ -12,7 +12,6 @@ int ports[NB_ROBOT] = {3000,8000};
 char ip[IP_SIZE];
 
 void bye();
-void gestionnaire_inventaire(void);
 void gestion_robot(int no);
 
 typedef struct {
@@ -77,7 +76,8 @@ int main(int argc, char *argv[]) {
             CHECK(sigprocmask(SIG_SETMASK , &OldMask , NULL), "sigprocmask()");
             if(i==0){
                 // Gestionnaire communication inventaire
-                gestionnaire_inventaire();
+                int se_inventaire = 0; // la définir au préalable
+                gestionnaire_inventaire(se_inventaire);
             }
             if(i>0 && i<=NB_ROBOT){
                 // Processus de gestion des robots
