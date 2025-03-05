@@ -38,7 +38,7 @@ void trajectoire(const char* pos_initiale, const char* pos_finale, char path[MAX
     }
     
     while (pos_index!=pos_finale_index || type_pos!=type_pos_finale){
-        char holder_name_place[5];
+        char holder_name_place[20];
         
         if(type_pos == 'P'){
             // On est au parking
@@ -51,9 +51,18 @@ void trajectoire(const char* pos_initiale, const char* pos_finale, char path[MAX
             // On regarde ou on est
             if (type_pos == 'D'){
                 // On est sur la colone de descente
-                // On doit avancer sur la colone de montée
-                sprintf(holder_name_place, "M%d", pos_index);
-                strcpy(path[i], holder_name_place);
+                // On doit descendre sauf si on est sur la dernière place
+                if(pos_index == (NB_COLONNES+1)*(2*NB_LIGNES)){
+                    // On est sur la dernière place, on peut aller sur la colonne de montée
+                    sprintf(holder_name_place, "M%d", pos_index);
+                    strcpy(path[i], holder_name_place);
+                }
+                else{
+                    sprintf(holder_name_place, "D%d", pos_index + (NB_COLONNES + 1));
+                    strcpy(path[i], holder_name_place);
+                }
+
+                
             }
            else if (type_pos == 'M'){
                 // On est sur la colone de montée
@@ -104,9 +113,18 @@ void trajectoire(const char* pos_initiale, const char* pos_finale, char path[MAX
             }
             else if (type_pos == 'M'){
                 // On est sur la colone de montée
-                // On doit avancer sur la colone de montée
-                sprintf(holder_name_place, "D%d", pos_index);
-                strcpy(path[i], holder_name_place);
+                // On est sur la colone de descente
+                // On doit monter sauf si on est sur la première place
+                if(pos_index ==(NB_COLONNES + 1)){
+                    // On est sur la première place, on peut aller sur la colonne de descente
+                    sprintf(holder_name_place, "D%d", pos_index);
+                    strcpy(path[i], holder_name_place);
+                }
+                else{
+                    sprintf(holder_name_place, "M%d", pos_index - (NB_COLONNES + 1));
+                    strcpy(path[i], holder_name_place);
+                }
+
             }
             else if (type_pos == 'S'){
                 // On va vers la gauche
