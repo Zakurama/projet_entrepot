@@ -3,6 +3,8 @@
 
 #include <stdlib.h>
 
+#define MAX_ITEMS_NAME_SIZE 50
+
 #define CHECK_ERROR(val1,val2,msg)   if (val1==val2) \
                                     { perror(msg); \
                                         exit(EXIT_FAILURE); }

@@ -121,37 +121,6 @@ void bye(){
     }
 }
 
-void gestionnaire_inventaire(void){
-    // char* buffer_reception_ID_articles[50];
-    // char* buffer_reception_pos_articles[50];
-    // int se;
-    // int ID_articles[MAX_ARTICLES_LISTE_ATTENTE];
-    // int positions_possibles_articles[MAX_ARTICLES_LISTE_ATTENTE][MAX_ESPACE_STOCK];
-    // int positions_choisies_articles[MAX_ARTICLES_LISTE_ATTENTE];
-    // int ID_robot;
-    // // Initialiser une connexion TCP avec l'inventaire
-    // init_tcp_socket(&se,INVENTORY_IP,INVENTORY_PORT,0);
-    while (1){
-
-        // On attend une commande de l'inventaire
-        // recev_message(se,buffer_reception_ID_articles); // la liste des articles (ID)
-        // recev_message(se,buffer_reception_pos_articles); // la liste des positions
-
-        // On extrait les articles demandés et leurs positions
-        // TODO : Faire du parsing
-
-
-        // On choisit le robot qui traitera la tâche et la position de l'article souhaité en stock
-        // ID_robot = rand()%NB_ROBOT; // Pour l'instant pas de choix optimal du robot
-
-        // On met à jour la liste des articles et la liste de position du robot
-        // TODO
-
-        // On informe l'inventaire qu'on a bien pris en compte sa demande (on indique quels articles de l'inventaire vont être pris)
-        // TODO
-    }
-}
-
 void gestion_robot(int no){
     int se;
     init_tcp_socket(&se,ip,ports[no],1);

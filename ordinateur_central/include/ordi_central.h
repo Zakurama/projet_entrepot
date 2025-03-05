@@ -27,5 +27,7 @@
 #define MAX_WAYPOINTS 100
 
 void trajectoire(const char* pos_initiale, const char* pos_finale, char path[MAX_WAYPOINTS][SIZE_POS]);
+void gestionnaire_inventaire(void);
+char *parse_client_request(const char *request, int *L_n, int max_elements, char *item_names[max_elements], int *count);
 
 #endif

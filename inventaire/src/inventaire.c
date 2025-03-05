@@ -114,7 +114,7 @@ void add_column(item_t *items, int nb_items, int nb_rows, int *nb_columns, int n
 // message format: "itemName_N,itemName_N,..."
 char *check_client_request(const char *request, item_t *items, int nb_items, int max_elements) {
     int count = 0;
-    char name[50];
+    char name[MAX_ITEMS_NAME_SIZE];
     int value;
     char *item_names[max_elements];
 

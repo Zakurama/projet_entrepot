@@ -1,4 +1,6 @@
 #include "ordi_central.h"
+#include "utils.h"
+#include "tcp.h"
 
 void trajectoire(const char* pos_initiale, const char* pos_finale, char path[MAX_WAYPOINTS][SIZE_POS]){
 
@@ -144,4 +146,64 @@ void trajectoire(const char* pos_initiale, const char* pos_finale, char path[MAX
         type_pos = path[i][0];
         i++;
     }
+}
+
+void gestionnaire_inventaire(int se){
+    char buffer_reception_ID_articles[MAXOCTETS];
+    char buffer_reception_pos_articles[MAXOCTETS];
+    // int ID_articles[MAX_ARTICLES_LISTE_ATTENTE];
+    // int positions_possibles_articles[MAX_ARTICLES_LISTE_ATTENTE][MAX_ESPACE_STOCK];
+    // int positions_choisies_articles[MAX_ARTICLES_LISTE_ATTENTE];
+    // int ID_robot;
+    // // Initialiser une connexion TCP avec l'inventaire
+    while (1){
+
+        // On attend une commande de l'inventaire
+        recev_message(se, buffer_reception_ID_articles); // la liste des articles (ID)
+        recev_message(se, buffer_reception_pos_articles); // la liste des positions
+
+        // On extrait les articles demandés et leurs positions
+        // TODO : Faire du parsing
+        char *item_names[MAX_ARTICLES_LISTE_ATTENTE];
+        int L_n[MAX_ARTICLES_LISTE_ATTENTE];
+        int count;
+        char *error = parse_client_request(buffer_reception_ID_articles, L_n, MAX_ARTICLES_LISTE_ATTENTE, item_names, &count);
+        if (error != NULL) {
+            fprintf(stderr, "Error in parse request: %s\n", error);
+            continue;
+        }
+
+
+        // On choisit le robot qui traitera la tâche et la position de l'article souhaité en stock
+        // ID_robot = rand()%NB_ROBOT; // Pour l'instant pas de choix optimal du robot
+
+        // On met à jour la liste des articles et la liste de position du robot
+        // TODO
+
+        // On informe l'inventaire qu'on a bien pris en compte sa demande (on indique quels articles de l'inventaire vont être pris)
+        // TODO
+    }
+}
+
+// message format: "itemName_N,itemName_N,..."
+char *parse_client_request(const char *request, int *L_n, int max_elements, char *item_names[max_elements], int *count){
+    char temp[strlen(request) + 1];
+    strcpy(temp, request); // Create a modifiable copy of the string
+    char name[MAX_ITEMS_NAME_SIZE];
+
+    char *token = strtok(temp, ",");
+    *count = 0;
+    while (token != NULL){
+        if(*count >= max_elements){
+            return "Too many items requested\n";
+        }
+        if (sscanf(token, "%[^_]_%d", name, &L_n[*count]) != 2){
+            return "Invalid request format\n";
+        }
+
+        item_names[*count] = strdup(name);
+        (*count)++;
+        token = strtok(NULL, ",");
+    }
+    return NULL;
 }
