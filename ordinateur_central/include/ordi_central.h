@@ -30,5 +30,6 @@ void trajectoire(const char* pos_initiale, const char* pos_finale, char path[MAX
 void gestionnaire_inventaire(int se);
 char *parse_client_request(const char *request, int max_elements, int L_n[max_elements], char *item_names[max_elements], int *count);
 char *parse_stock(const char *request, int max_elements, int *L_n[max_elements], int *L_x[max_elements], int *L_y[max_elements], char *item_names[max_elements], int count[max_elements], int *nb_items_request);
+char *create_inventory_string(int nb_items, int max_elements, int count[max_elements], int *L_n[max_elements], int *L_x[max_elements], int *L_y[max_elements], char *item_names[max_elements]);
 
 #endif

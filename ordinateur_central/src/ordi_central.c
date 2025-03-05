@@ -267,3 +267,31 @@ char *parse_stock(const char *request, int max_elements, int *L_n[max_elements],
     }
     return NULL;
 }
+
+/* Return a string in the format: "itemName1;N_X.Y,N_X.Y,.../itemName2;N_X.Y,..."
+ */
+char *create_inventory_string(int nb_items, int max_elements, int count[max_elements], int *L_n[max_elements], int *L_x[max_elements], int *L_y[max_elements], char *item_names[max_elements]){
+    char *inventory_string = malloc(MAXOCTETS * sizeof(char));
+    CHECK_ERROR(inventory_string, NULL, "Failed to allocate memory for inventory string");
+
+    inventory_string[0] = '\0';
+    for (int i = 0; i < nb_items; i++){
+        char item_string[MAXOCTETS];
+        item_string[0] = '\0';
+        for (int j = 0; j < count[i]; j++){
+            char position_string[MAXOCTETS];
+            sprintf(position_string, "%d_%d.%d", L_n[i][j], L_x[i][j], L_y[i][j]);
+            strcat(item_string, position_string);
+            if (j < count[i] - 1){
+                strcat(item_string, ",");
+            }
+        }
+        strcat(inventory_string, item_names[i]);
+        strcat(inventory_string, ";");
+        strcat(inventory_string, item_string);
+        if (i < nb_items - 1){
+            strcat(inventory_string, "/");
+        }
+    }
+    return inventory_string;
+}
