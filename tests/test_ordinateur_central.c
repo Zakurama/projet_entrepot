@@ -369,6 +369,7 @@ void test_update_shared_memory_stock(void) {
     free(item.quantities);
     free(robot.positions[0]);
     free(robot.quantities[0]);
+}
 
 void test_create_inventory_string(void) {
     int max_elements = 50;
@@ -540,6 +541,16 @@ int main() {
     }
 
     if (NULL == CU_add_test(suite, "test create inventory string single item", test_create_inventory_string_single_item)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
+    if (NULL == CU_add_test(suite, "test add item in shared memory", test_update_shared_memory_stock)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
+    if (NULL == CU_add_test(suite, "test select item in stocks", test_selection_items)) {
         CU_cleanup_registry();
         return CU_get_error();
     }
