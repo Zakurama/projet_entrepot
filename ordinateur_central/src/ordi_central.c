@@ -383,3 +383,4 @@ char *create_inventory_string(int nb_items, int max_elements, int count[max_elem
     }
     return inventory_string;
 }
+
