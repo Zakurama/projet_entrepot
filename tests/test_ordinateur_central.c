@@ -333,6 +333,67 @@ void test_parse_stock_empty_request(void) {
     }
 }
 
+void test_selection_items(void){
+    // Liste des articles demandés par le client
+    char *item_names_requested[] = {"Banane", "Pomme", "Raisin"};
+    int L_n_requested[] = {6, 5, 8}; // Quantités demandées
+    int count_requested = 3;
+
+    // Stock disponible
+    char *item_names_stock[] = {"Banane", "Pomme", "Orange", "Raisin"};
+    int L_n_stock_0[] = {5, 6};  // Stock de "Banane" à deux positions
+    int L_n_stock_1[] = {3, 2};  // Stock de "Pomme" à deux positions
+    int L_n_stock_2[] = {4, 7};  // Stock de "Orange" (non demandé)
+    int L_n_stock_3[] = {2, 6};  // Stock de "Raisin" à deux positions
+
+    // Pointeurs vers les stocks
+    int *L_n_stock[] = {L_n_stock_0, L_n_stock_1, L_n_stock_2, L_n_stock_3};
+
+    // Position des articles dans l'entrepôt (allées et bacs)
+    int L_x_stock_0[] = {1, 2};
+    int L_x_stock_1[] = {3, 4};
+    int L_x_stock_2[] = {5, 6};
+    int L_x_stock_3[] = {7, 8};
+    int *L_x_stock[] = {L_x_stock_0, L_x_stock_1, L_x_stock_2, L_x_stock_3};
+
+    int L_y_stock_0[] = {10, 11};
+    int L_y_stock_1[] = {12, 13};
+    int L_y_stock_2[] = {14, 15};
+    int L_y_stock_3[] = {16, 17};
+    int *L_y_stock[] = {L_y_stock_0, L_y_stock_1, L_y_stock_2, L_y_stock_3};
+
+    int count_stock[] = {2, 2, 2, 2}; // Nombre de positions pour chaque article en stock
+
+    // Liste des articles sélectionnés
+    SelectedItem selected_items[MAX_ARTICLES_LISTE_ATTENTE];
+
+    // Appel de la fonction
+    int nb_selected = choose_items_stocks(item_names_requested, L_n_requested, count_requested,item_names_stock, L_n_stock, L_x_stock, L_y_stock, count_stock,selected_items);
+
+    // Affichage des résultats
+    printf("Articles sélectionnés :\n");
+    for (int i = 0; i < nb_selected; i++) {
+        printf("Article: %s\n", selected_items[i].item_name);
+        printf("Positions: [ ");
+        for (int j = 0; j < selected_items[i].count; j++) {
+            printf("[%d, %d] ", selected_items[i].positions[j][0], selected_items[i].positions[j][1]);
+        }
+        printf("]\n");
+        printf("Quantités: [ ");
+        for (int j = 0; j < selected_items[i].count; j++) {
+            printf("%d ", selected_items[i].quantities[j]);
+        }
+        printf("]\n");
+
+        // Libération de la mémoire
+        for (int j = 0; j < selected_items[i].count; j++) {
+            free(selected_items[i].positions[j]);
+        }
+        free(selected_items[i].positions);
+        free(selected_items[i].quantities);
+    }
+}
+
 int main() {
     CU_initialize_registry();
 
@@ -392,6 +453,8 @@ int main() {
     CU_basic_set_mode(CU_BRM_VERBOSE);
     CU_basic_run_tests();
     CU_cleanup_registry();
+
+    test_selection_items();
 
     return 0;
 }

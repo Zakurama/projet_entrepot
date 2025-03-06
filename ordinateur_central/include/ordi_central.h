@@ -27,9 +27,17 @@
 #define MAX_ESPACE_STOCK 100
 #define MAX_WAYPOINTS 100
 
+typedef struct {
+    char *item_name;
+    int **positions; // Liste des coordonnées [x, y] du stock
+    int *quantities; // Liste des quantités prélevées sur chaque position
+    int count;       // Nombre de positions sélectionnées
+} SelectedItem;
+
 void trajectoire(const char* pos_initiale, const char* pos_finale, char path[MAX_WAYPOINTS][SIZE_POS]);
 void gestionnaire_inventaire(int se);
 char *parse_client_request(const char *request, int max_elements, int L_n[max_elements], char *item_names[max_elements], int *count);
 char *parse_stock(const char *request, int max_elements, int *L_n[max_elements], int *L_x[max_elements], int *L_y[max_elements], char *item_names[max_elements], int count[max_elements], int *nb_items_request);
+int choose_items_stocks(char *item_names_requested[], int L_n_requested[], int count_requested,char *item_names_stock[], int *L_n_stock[], int *L_x_stock[], int *L_y_stock[], int count_stock[],SelectedItem selected_items[]);
 
 #endif
