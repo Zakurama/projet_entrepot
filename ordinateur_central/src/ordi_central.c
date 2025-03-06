@@ -167,7 +167,18 @@ void trajectoire(const char* pos_initiale, const char* pos_finale, char path[MAX
     }
 }
 
-void receive_request_inventory(int client_sd,char *buffer_reception_ID_articles, char *buffer_reception_pos_articles,char *item_names_requested[MAX_ARTICLES_LISTE_ATTENTE],int L_n_requested[MAX_ARTICLES_LISTE_ATTENTE],int *L_n_stock[MAX_ARTICLES_LISTE_ATTENTE], int *L_x_stock[MAX_ARTICLES_LISTE_ATTENTE], int *L_y_stock[MAX_ARTICLES_LISTE_ATTENTE], char *item_names_stock[MAX_ARTICLES_LISTE_ATTENTE], int* count_requested, int count_stock[MAX_ARTICLES_LISTE_ATTENTE],int* nb_items) {
+void receive_request_and_stock_inventory(int client_sd,char *buffer_reception_ID_articles, char *buffer_reception_pos_articles,char *item_names_requested[MAX_ARTICLES_LISTE_ATTENTE],int L_n_requested[MAX_ARTICLES_LISTE_ATTENTE],int *L_n_stock[MAX_ARTICLES_LISTE_ATTENTE], int *L_x_stock[MAX_ARTICLES_LISTE_ATTENTE], int *L_y_stock[MAX_ARTICLES_LISTE_ATTENTE], char *item_names_stock[MAX_ARTICLES_LISTE_ATTENTE], int* count_requested, int count_stock[MAX_ARTICLES_LISTE_ATTENTE],int* nb_items) {
+
+    for (int i = 0; i < MAX_ARTICLES_LISTE_ATTENTE; i++) {
+        item_names_requested[i] = malloc(MAX_ITEMS_NAME_SIZE * sizeof(char));
+    }
+
+    for (int i = 0; i < MAX_ARTICLES_LISTE_ATTENTE; i++) {
+        L_n_stock[i] = malloc(MAX_ARTICLES_LISTE_ATTENTE * sizeof(int));
+        L_x_stock[i] = malloc(MAX_ARTICLES_LISTE_ATTENTE * sizeof(int));
+        L_y_stock[i] = malloc(MAX_ARTICLES_LISTE_ATTENTE * sizeof(int));
+        item_names_stock[i] = malloc(MAX_ITEMS_NAME_SIZE * sizeof(char));
+    }
 
     // On attend une commande de l'inventaire
     recev_message(client_sd, buffer_reception_ID_articles); // la liste des articles (ID)
@@ -272,6 +283,38 @@ void print_robot_state(Robot* robot){
     }
 }
 
+void convert_items_to_lists(Item *selected_items, int num_items,
+    char *chosen_item_names[MAX_ARTICLES_LISTE_ATTENTE],
+    int *chosen_x_positions[MAX_ARTICLES_LISTE_ATTENTE],
+    int *chosen_y_positions[MAX_ARTICLES_LISTE_ATTENTE],
+    int *chosen_quantities[MAX_ARTICLES_LISTE_ATTENTE],
+    int chosen_counts[MAX_ARTICLES_LISTE_ATTENTE]) {
+for (int i = 0; i < num_items; i++) {
+Item item = selected_items[i];
+
+// Copier le nom de l'article
+chosen_item_names[i] = item.item_name;
+
+// Allouer et copier les positions (x, y)
+chosen_x_positions[i] = (int *)malloc(item.count * sizeof(int));
+chosen_y_positions[i] = (int *)malloc(item.count * sizeof(int));
+for (int j = 0; j < item.count; j++) {
+chosen_x_positions[i][j] = item.positions[j][0]; // x
+chosen_y_positions[i][j] = item.positions[j][1]; // y
+}
+
+// Allouer et copier les quantités
+chosen_quantities[i] = (int *)malloc(item.count * sizeof(int));
+for (int j = 0; j < item.count; j++) {
+chosen_quantities[i][j] = item.quantities[j];
+}
+
+// Copier le count
+chosen_counts[i] = item.count;
+}
+}
+
+
 // message format: "itemName1;N_X.Y,N_X.Y,.../itemName2;N_X.Y,..
 char *parse_stock(const char *request, int max_elements, int *L_n[max_elements], int *L_x[max_elements], int *L_y[max_elements], char *item_names[max_elements], int count[max_elements], int *nb_items_request){
     char temp[strlen(request) + 1];
@@ -316,4 +359,32 @@ char *parse_stock(const char *request, int max_elements, int *L_n[max_elements],
         }
     }
     return NULL;
+}
+
+/* Return a string in the format: "itemName1;N_X.Y,N_X.Y,.../itemName2;N_X.Y,..."
+ */
+char *create_inventory_string(int nb_items, int max_elements, int count[max_elements], int *L_n[max_elements], int *L_x[max_elements], int *L_y[max_elements], char *item_names[max_elements]){
+    char *inventory_string = malloc(MAXOCTETS * sizeof(char));
+    CHECK_ERROR(inventory_string, NULL, "Failed to allocate memory for inventory string");
+
+    inventory_string[0] = '\0';
+    for (int i = 0; i < nb_items; i++){
+        char item_string[MAXOCTETS];
+        item_string[0] = '\0';
+        for (int j = 0; j < count[i]; j++){
+            char position_string[MAXOCTETS];
+            sprintf(position_string, "%d_%d.%d", L_n[i][j], L_x[i][j], L_y[i][j]);
+            strcat(item_string, position_string);
+            if (j < count[i] - 1){
+                strcat(item_string, ",");
+            }
+        }
+        strcat(inventory_string, item_names[i]);
+        strcat(inventory_string, ";");
+        strcat(inventory_string, item_string);
+        if (i < nb_items - 1){
+            strcat(inventory_string, "/");
+        }
+    }
+    return inventory_string;
 }

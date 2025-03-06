@@ -120,45 +120,43 @@ void bye(){
 }
 
 void gestionnaire_inventaire(int client_sd){
-    // Allocation et initialisation des tableaux
+    // Demande du client
     char buffer_reception_ID_articles[MAXOCTETS];
     char buffer_reception_pos_articles[MAXOCTETS];
-
+    char buffer_emission[MAXOCTETS];
     char *item_names_requested[MAX_ARTICLES_LISTE_ATTENTE];
-    for (int i = 0; i < MAX_ARTICLES_LISTE_ATTENTE; i++) {
-        item_names_requested[i] = malloc(MAX_ITEMS_NAME_SIZE * sizeof(char));
-    }
-
     int L_n_requested[MAX_ARTICLES_LISTE_ATTENTE];
 
-    // Allocation pour les stocks
+    // Stocks
     int *L_n_stock[MAX_ARTICLES_LISTE_ATTENTE];
     int *L_x_stock[MAX_ARTICLES_LISTE_ATTENTE];
     int *L_y_stock[MAX_ARTICLES_LISTE_ATTENTE];
     char *item_names_stock[MAX_ARTICLES_LISTE_ATTENTE];
-
-    for (int i = 0; i < MAX_ARTICLES_LISTE_ATTENTE; i++) {
-        L_n_stock[i] = malloc(MAX_ARTICLES_LISTE_ATTENTE * sizeof(int));
-        L_x_stock[i] = malloc(MAX_ARTICLES_LISTE_ATTENTE * sizeof(int));
-        L_y_stock[i] = malloc(MAX_ARTICLES_LISTE_ATTENTE * sizeof(int));
-        item_names_stock[i] = malloc(MAX_ITEMS_NAME_SIZE * sizeof(char));
-    }
-
     int count_stock[MAX_ARTICLES_LISTE_ATTENTE]; // nombre de positions par article
     int count_requested; // nombre d'articles demandés
     int nb_items;
+
     // On récupère les demandes de l'inventaire
-    receive_request_inventory(client_sd, buffer_reception_ID_articles, buffer_reception_pos_articles, item_names_requested, L_n_requested, L_n_stock, L_x_stock, L_y_stock, item_names_stock, &count_requested, count_stock,&nb_items);
+    receive_request_and_stock_inventory(client_sd, buffer_reception_ID_articles, buffer_reception_pos_articles, item_names_requested, L_n_requested, L_n_stock, L_x_stock, L_y_stock, item_names_stock, &count_requested, count_stock,&nb_items);
     
     // On fait le choix des articles dans les stocks
     Item selected_items[MAX_ARTICLES_LISTE_ATTENTE];
     int nb_selected = choose_items_stocks(item_names_requested, L_n_requested, count_requested,item_names_stock, L_n_stock, L_x_stock, L_y_stock, count_stock,selected_items);
 
     // On informe l'inventaire qu'on a bien pris en compte sa demande (on indique quels articles de l'inventaire vont être pris)
-    // TODO
+    // Initialisation des nouvelles listes pour suivre les articles choisis
+    char *chosen_item_names[MAX_ARTICLES_LISTE_ATTENTE];
+    int *chosen_x_positions[MAX_ARTICLES_LISTE_ATTENTE];
+    int *chosen_y_positions[MAX_ARTICLES_LISTE_ATTENTE];
+    int *chosen_quantities[MAX_ARTICLES_LISTE_ATTENTE];
+    int chosen_counts[MAX_ARTICLES_LISTE_ATTENTE];
+    convert_items_to_lists(selected_items, nb_selected,chosen_item_names,chosen_x_positions,chosen_y_positions,chosen_quantities,chosen_counts);
+    strcpy(buffer_emission,create_inventory_string(nb_items, MAX_ARTICLES_LISTE_ATTENTE, chosen_counts, chosen_quantities, chosen_x_positions, chosen_y_positions, chosen_item_names));
+    send_message(client_sd,buffer_emission);
+    printf("buffer emission : %s\n",buffer_emission);
 
-    int ID_robot = 0;
     // On choisit le robot qui traitera la tâche et la position de l'article souhaité en stock
+    int ID_robot = 0;
     for (int i = 0; i < nb_selected; i++) {
         for (int j = 0;j<selected_items[i].count;j++){
             // On met à jour sa mémoire partagée
@@ -169,8 +167,8 @@ void gestionnaire_inventaire(int client_sd){
         }
     }
 
-    for(int ID_robot =0;ID_robot<NB_ROBOT;ID_robot++){
-        print_robot_state(robots[ID_robot]);
+    for(int i = 0;i<NB_ROBOT;i++){
+        print_robot_state(robots[i]);
     }
 
     // Free allocated memory
