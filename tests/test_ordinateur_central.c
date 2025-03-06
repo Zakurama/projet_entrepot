@@ -351,15 +351,15 @@ void test_update_shared_memory_stock(void) {
     item.quantities[0] = 3;
 
     // Appel de la fonction
-    update_shared_memory_stock(&robot, item);
+    update_shared_memory_stock(&robot, item,0);
 
     // Vérification que l'élément a été ajouté correctement
     CU_ASSERT_PTR_NOT_NULL(robot.item_name[0]);
     CU_ASSERT_STRING_EQUAL(robot.item_name[0], "Item1");
 
     CU_ASSERT_PTR_NOT_NULL(robot.positions[0]);
-    CU_ASSERT_EQUAL(robot.positions[0][0], 5);
-    CU_ASSERT_EQUAL(robot.positions[0][1], 10);
+    CU_ASSERT_EQUAL(robot.positions[0][0], 6);
+    CU_ASSERT_EQUAL(robot.positions[0][1], 11);
 
     CU_ASSERT_PTR_NOT_NULL(robot.quantities[0]);
     CU_ASSERT_EQUAL(robot.quantities[0][0], 3);
