@@ -283,36 +283,31 @@ void print_robot_state(Robot* robot){
     }
 }
 
-void convert_items_to_lists(Item *selected_items, int num_items,
-    char *chosen_item_names[MAX_ARTICLES_LISTE_ATTENTE],
-    int *chosen_x_positions[MAX_ARTICLES_LISTE_ATTENTE],
-    int *chosen_y_positions[MAX_ARTICLES_LISTE_ATTENTE],
-    int *chosen_quantities[MAX_ARTICLES_LISTE_ATTENTE],
-    int chosen_counts[MAX_ARTICLES_LISTE_ATTENTE]) {
-for (int i = 0; i < num_items; i++) {
-Item item = selected_items[i];
+void convert_items_to_lists(Item *selected_items, int num_items,char *chosen_item_names[MAX_ARTICLES_LISTE_ATTENTE],int *chosen_x_positions[MAX_ARTICLES_LISTE_ATTENTE],int *chosen_y_positions[MAX_ARTICLES_LISTE_ATTENTE],int *chosen_quantities[MAX_ARTICLES_LISTE_ATTENTE],int chosen_counts[MAX_ARTICLES_LISTE_ATTENTE]) {
+    for (int i = 0; i < num_items; i++) {
+        Item item = selected_items[i];
 
-// Copier le nom de l'article
-chosen_item_names[i] = item.item_name;
+        // Copier le nom de l'article
+        chosen_item_names[i] = item.item_name;
 
-// Allouer et copier les positions (x, y)
-chosen_x_positions[i] = (int *)malloc(item.count * sizeof(int));
-chosen_y_positions[i] = (int *)malloc(item.count * sizeof(int));
-for (int j = 0; j < item.count; j++) {
-chosen_x_positions[i][j] = item.positions[j][0]; // x
-chosen_y_positions[i][j] = item.positions[j][1]; // y
-}
+        // Allouer et copier les positions (x, y)
+        chosen_x_positions[i] = (int *)malloc(item.count * sizeof(int));
+        chosen_y_positions[i] = (int *)malloc(item.count * sizeof(int));
+        for (int j = 0; j < item.count; j++) {
+            chosen_x_positions[i][j] = item.positions[j][0] + 1; // x
+            chosen_y_positions[i][j] = item.positions[j][1] + 1; // y
+        }
 
-// Allouer et copier les quantités
-chosen_quantities[i] = (int *)malloc(item.count * sizeof(int));
-for (int j = 0; j < item.count; j++) {
-chosen_quantities[i][j] = item.quantities[j];
-}
+        // Allouer et copier les quantités
+        chosen_quantities[i] = (int *)malloc(item.count * sizeof(int));
+        for (int j = 0; j < item.count; j++) {
+            chosen_quantities[i][j] = item.quantities[j];
+        }
 
-// Copier le count
-chosen_counts[i] = item.count;
-}
-}
+        // Copier le count
+        chosen_counts[i] = item.count;
+    }
+    }
 
 
 // message format: "itemName1;N_X.Y,N_X.Y,.../itemName2;N_X.Y,..

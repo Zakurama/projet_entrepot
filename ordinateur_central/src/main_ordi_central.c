@@ -13,6 +13,7 @@ char ip[IP_SIZE];
 
 void bye();
 void gestion_robot(int no);
+void gestionnaire_inventaire(int client_sd);
 
 int shm[NB_ROBOT];
 size_t size_robot = sizeof(Robot);
@@ -136,24 +137,24 @@ void gestionnaire_inventaire(int client_sd){
     int count_requested; // nombre d'articles demandés
     int nb_items;
 
-    // On récupère les demandes de l'inventaire
-    receive_request_and_stock_inventory(client_sd, buffer_reception_ID_articles, buffer_reception_pos_articles, item_names_requested, L_n_requested, L_n_stock, L_x_stock, L_y_stock, item_names_stock, &count_requested, count_stock,&nb_items);
-    
-    // On fait le choix des articles dans les stocks
-    Item selected_items[MAX_ARTICLES_LISTE_ATTENTE];
-    int nb_selected = choose_items_stocks(item_names_requested, L_n_requested, count_requested,item_names_stock, L_n_stock, L_x_stock, L_y_stock, count_stock,selected_items);
-
-    // On informe l'inventaire qu'on a bien pris en compte sa demande (on indique quels articles de l'inventaire vont être pris)
-    // Initialisation des nouvelles listes pour suivre les articles choisis
+    // Articles choisis
     char *chosen_item_names[MAX_ARTICLES_LISTE_ATTENTE];
     int *chosen_x_positions[MAX_ARTICLES_LISTE_ATTENTE];
     int *chosen_y_positions[MAX_ARTICLES_LISTE_ATTENTE];
     int *chosen_quantities[MAX_ARTICLES_LISTE_ATTENTE];
     int chosen_counts[MAX_ARTICLES_LISTE_ATTENTE];
+    Item selected_items[MAX_ARTICLES_LISTE_ATTENTE];
+
+    // On récupère les demandes de l'inventaire
+    receive_request_and_stock_inventory(client_sd, buffer_reception_ID_articles, buffer_reception_pos_articles, item_names_requested, L_n_requested, L_n_stock, L_x_stock, L_y_stock, item_names_stock, &count_requested, count_stock,&nb_items);
+    
+    // On fait le choix des articles dans les stocks
+    int nb_selected = choose_items_stocks(item_names_requested, L_n_requested, count_requested,item_names_stock, L_n_stock, L_x_stock, L_y_stock, count_stock,selected_items);
+
+    // On informe l'inventaire qu'on a bien pris en compte sa demande (on indique quels articles de l'inventaire vont être pris)
     convert_items_to_lists(selected_items, nb_selected,chosen_item_names,chosen_x_positions,chosen_y_positions,chosen_quantities,chosen_counts);
     strcpy(buffer_emission,create_inventory_string(nb_items, MAX_ARTICLES_LISTE_ATTENTE, chosen_counts, chosen_quantities, chosen_x_positions, chosen_y_positions, chosen_item_names));
     send_message(client_sd,buffer_emission);
-    printf("buffer emission : %s\n",buffer_emission);
 
     // On choisit le robot qui traitera la tâche et la position de l'article souhaité en stock
     int ID_robot = 0;
