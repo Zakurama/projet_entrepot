@@ -7,7 +7,7 @@
 #define LOCAL_IP "127.0.0.1"
 #define LOCAL_PORT 5000
 
-int ports[NB_ROBOT] = {3000,8000};
+int ports[NB_ROBOT] = {8000,8001};
 
 char ip[IP_SIZE];
 

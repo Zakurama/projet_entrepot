@@ -181,14 +181,17 @@ void gestionnaire_inventaire(int se){
         // On attend une commande de l'inventaire
         recev_message(client_sd, buffer_reception_ID_articles); // la liste des articles (ID)
         recev_message(client_sd, buffer_reception_pos_articles); // la liste des positions
-        printf("COUOU\n");
 
         // On extrait les articles demandés et leurs positions
         char *item_names_requested[MAX_ARTICLES_LISTE_ATTENTE];
+
+        for (int i = 0; i < MAX_ARTICLES_LISTE_ATTENTE; i++) {
+            item_names_requested[i] = malloc(MAX_ITEMS_NAME_SIZE * sizeof(char));
+        }
+
         int L_n_requested[MAX_ARTICLES_LISTE_ATTENTE];
         int count;
-        char *error = malloc(MAXOCTETS * sizeof(char));
-        strcpy(error, parse_client_request(buffer_reception_ID_articles, MAX_ARTICLES_LISTE_ATTENTE, L_n_requested, item_names_requested, &count));
+        char *error = parse_client_request(buffer_reception_ID_articles, MAX_ARTICLES_LISTE_ATTENTE, L_n_requested, item_names_requested, &count);
         if (error != NULL) {
             fprintf(stderr, "Error in parse client request: %s\n", error);
             continue;
@@ -198,15 +201,25 @@ void gestionnaire_inventaire(int se){
         int *L_x_stock[MAX_ARTICLES_LISTE_ATTENTE]; // liste des allées par article
         int *L_y_stock[MAX_ARTICLES_LISTE_ATTENTE]; // liste des bacs par article
         char *item_names_stock[MAX_ARTICLES_LISTE_ATTENTE];
+
+        for (int i = 0; i < MAX_ARTICLES_LISTE_ATTENTE; i++) {
+            L_n_stock[i] = malloc(MAX_ARTICLES_LISTE_ATTENTE * sizeof(int));
+            L_x_stock[i] = malloc(MAX_ARTICLES_LISTE_ATTENTE * sizeof(int));
+            L_y_stock[i] = malloc(MAX_ARTICLES_LISTE_ATTENTE * sizeof(int));
+            item_names_stock[i] = malloc(MAX_ITEMS_NAME_SIZE * sizeof(char));
+        }
+
         int count_stock[MAX_ARTICLES_LISTE_ATTENTE]; // nombre de positions par article
         int nb_items;
-
         char *response = parse_stock(buffer_reception_pos_articles, MAX_ARTICLES_LISTE_ATTENTE, L_n_stock, L_x_stock, L_y_stock, item_names_stock, count_stock, &nb_items);
         if (response!=NULL){
-            fprintf(stderr, "Error in parse stock request: %s\n", error);
+            fprintf(stderr, "Error in parse stock request: %s\n", response);
             continue;
         }
-        printf("Nombre d'item : %d\n",nb_items);
+
+        printf("Parsing successful\n");
+        printf("buffer_reception_ID_articles: %s\n", buffer_reception_ID_articles);
+        printf("buffer_reception_pos_articles: %s\n", buffer_reception_pos_articles);
 
         // On choisit le robot qui traitera la tâche et la position de l'article souhaité en stock
         ID_robot = (ID_robot+1)%NB_ROBOT; // Pour l'instant pas de choix optimal du robot on prends juste à son tour robot 1
@@ -218,30 +231,16 @@ void gestionnaire_inventaire(int se){
 
         // On informe l'inventaire qu'on a bien pris en compte sa demande (on indique quels articles de l'inventaire vont être pris)
         // TODO
-    }
-}
 
-// message format: "itemName_N,itemName_N,..."
-char *parse_client_request(const char *request, int max_elements, int L_n[max_elements], char *item_names[max_elements], int *count){
-    char temp[strlen(request) + 1];
-    strcpy(temp, request); // Create a modifiable copy of the string
-    char name[MAX_ITEMS_NAME_SIZE];
-
-    char *token = strtok(temp, ",");
-    *count = 0;
-    while (token != NULL){
-        if(*count >= max_elements){
-            return "Too many items requested\n";
+        // Free allocated memory
+        for (int i = 0; i < MAX_ARTICLES_LISTE_ATTENTE; i++) {
+            free(item_names_requested[i]);
+            free(L_n_stock[i]);
+            free(L_x_stock[i]);
+            free(L_y_stock[i]);
+            free(item_names_stock[i]);
         }
-        if (sscanf(token, "%[^_]_%d", name, &L_n[*count]) != 2){
-            return "Invalid request format\n";
-        }
-
-        item_names[*count] = strdup(name);
-        (*count)++;
-        token = strtok(NULL, ",");
     }
-    return NULL;
 }
 
 // message format: "itemName1;N_X.Y,N_X.Y,.../itemName2;N_X.Y,..
