@@ -95,102 +95,6 @@ void test_trajectoire_D30_B10() {
     test_trajectoire_generique("D30", "B10", expected);
 }
 
-void test_parse_client_request_good_request(void) {
-    const char *request = "item0_2,item1_1";
-    int maxitems = 50;
-    int L_n[maxitems];
-
-    char *item_names[maxitems];
-    for (int i = 0; i < maxitems; i++) {
-        item_names[i] = malloc(MAX_ITEMS_NAME_SIZE * sizeof(char));
-    }
-
-    int count;
-    char *response = parse_client_request(request, maxitems, L_n, item_names, &count);
-
-    // Validate results
-    CU_ASSERT_PTR_NULL(response); // Check if there was no error
-    CU_ASSERT_EQUAL(count, 2);
-    CU_ASSERT_EQUAL(L_n[0], 2);
-    CU_ASSERT_STRING_EQUAL(item_names[0], "item0");
-    CU_ASSERT_EQUAL(L_n[1], 1);
-    CU_ASSERT_STRING_EQUAL(item_names[1], "item1");
-
-    // Cleanup memory
-    for (int i = 0; i < maxitems; i++) {
-        free(item_names[i]);
-    }
-}
-
-void test_parse_client_request_invalid_format(void) {
-    const char *request = "item0-2,item1_1";
-    int maxitems = 50;
-    int L_n[maxitems];
-
-    char *item_names[maxitems];
-    for (int i = 0; i < maxitems; i++) {
-        item_names[i] = malloc(MAX_ITEMS_NAME_SIZE * sizeof(char));
-    }
-
-    int count;
-    char *response = parse_client_request(request, maxitems, L_n, item_names, &count);
-
-    // Validate results
-    CU_ASSERT_PTR_NOT_NULL(response); // Check if there was an error
-    CU_ASSERT_STRING_EQUAL(response, "Invalid request format\n");
-
-    // Cleanup memory
-    for (int i = 0; i < maxitems; i++) {
-        free(item_names[i]);
-    }
-}
-
-void test_parse_client_request_too_many_items(void) {
-    const char *request = "item0_2,item1_1,item2_3,item3_4,item4_5,item5_6,item6_7,item7_8,item8_9,item9_10,item10_11";
-    int maxitems = 10;
-    int L_n[maxitems];
-
-    char *item_names[maxitems];
-    for (int i = 0; i < maxitems; i++) {
-        item_names[i] = malloc(MAX_ITEMS_NAME_SIZE * sizeof(char));
-    }
-
-    int count;
-    char *response = parse_client_request(request, maxitems, L_n, item_names, &count);
-
-    // Validate results
-    CU_ASSERT_PTR_NOT_NULL(response); // Check if there was an error
-    CU_ASSERT_STRING_EQUAL(response, "Too many items requested\n");
-
-    // Cleanup memory
-    for (int i = 0; i < maxitems; i++) {
-        free(item_names[i]);
-    }
-}
-
-void test_parse_client_request_empty_request(void) {
-    const char *request = "";
-    int maxitems = 50;
-    int L_n[maxitems];
-
-    char *item_names[maxitems];
-    for (int i = 0; i < maxitems; i++) {
-        item_names[i] = malloc(MAX_ITEMS_NAME_SIZE * sizeof(char));
-    }
-
-    int count;
-    char *response = parse_client_request(request, maxitems, L_n, item_names, &count);
-
-    // Validate results
-    CU_ASSERT_PTR_NULL(response); // Check if there was no error
-    CU_ASSERT_EQUAL(count, 0);
-
-    // Cleanup memory
-    for (int i = 0; i < maxitems; i++) {
-        free(item_names[i]);
-    }
-}
-
 void test_parse_stock_good_request(void) {
     const char *request = "item0;2_1.1,2_2.2/item1;1_3.3";
     int max_elements = 50;
@@ -409,26 +313,6 @@ int main() {
     CU_add_test(suite, "Trajectoire de B5 à P25", test_trajectoire_B5_P25);
     CU_add_test(suite, "Trajectoire de B10 à P25", test_trajectoire_B10_P25);
     CU_add_test(suite, "Trajectoire de D30 à B10", test_trajectoire_D30_B10);
-
-    if (NULL == CU_add_test(suite, "test parse client good request", test_parse_client_request_good_request)) {
-        CU_cleanup_registry();
-        return CU_get_error();
-    }
-
-    if (NULL == CU_add_test(suite, "test parse client invalid format", test_parse_client_request_invalid_format)) {
-        CU_cleanup_registry();
-        return CU_get_error();
-    }
-
-    if (NULL == CU_add_test(suite, "test parse client too many items", test_parse_client_request_too_many_items)) {
-        CU_cleanup_registry();
-        return CU_get_error();
-    }
-
-    if (NULL == CU_add_test(suite, "test parse client empty request", test_parse_client_request_empty_request)) {
-        CU_cleanup_registry();
-        return CU_get_error();
-    }
 
     if (NULL == CU_add_test(suite, "test parse stock good request", test_parse_stock_good_request)) {
         CU_cleanup_registry();

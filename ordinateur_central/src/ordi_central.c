@@ -184,10 +184,14 @@ void gestionnaire_inventaire(int se){
 
         // On extrait les articles demandés et leurs positions
         char *item_names_requested[MAX_ARTICLES_LISTE_ATTENTE];
+
+        for (int i = 0; i < MAX_ARTICLES_LISTE_ATTENTE; i++) {
+            item_names_requested[i] = malloc(MAX_ITEMS_NAME_SIZE * sizeof(char));
+        }
+
         int L_n_requested[MAX_ARTICLES_LISTE_ATTENTE];
-        int count_requested;
-        char *error = malloc(MAXOCTETS * sizeof(char));
-        strcpy(error, parse_client_request(buffer_reception_ID_articles, MAX_ARTICLES_LISTE_ATTENTE, L_n_requested, item_names_requested, &count_requested));
+        int count;
+        char *error = parse_client_request(buffer_reception_ID_articles, MAX_ARTICLES_LISTE_ATTENTE, L_n_requested, item_names_requested, &count);
         if (error != NULL) {
             fprintf(stderr, "Error in parse client request: %s\n", error);
             continue;
@@ -197,14 +201,25 @@ void gestionnaire_inventaire(int se){
         int *L_x_stock[MAX_ARTICLES_LISTE_ATTENTE]; // liste des allées par article
         int *L_y_stock[MAX_ARTICLES_LISTE_ATTENTE]; // liste des bacs par article
         char *item_names_stock[MAX_ARTICLES_LISTE_ATTENTE];
+
+        for (int i = 0; i < MAX_ARTICLES_LISTE_ATTENTE; i++) {
+            L_n_stock[i] = malloc(MAX_ARTICLES_LISTE_ATTENTE * sizeof(int));
+            L_x_stock[i] = malloc(MAX_ARTICLES_LISTE_ATTENTE * sizeof(int));
+            L_y_stock[i] = malloc(MAX_ARTICLES_LISTE_ATTENTE * sizeof(int));
+            item_names_stock[i] = malloc(MAX_ITEMS_NAME_SIZE * sizeof(char));
+        }
+
         int count_stock[MAX_ARTICLES_LISTE_ATTENTE]; // nombre de positions par article
         int nb_items;
-
         char *response = parse_stock(buffer_reception_pos_articles, MAX_ARTICLES_LISTE_ATTENTE, L_n_stock, L_x_stock, L_y_stock, item_names_stock, count_stock, &nb_items);
         if (response!=NULL){
-            fprintf(stderr, "Error in parse stock request: %s\n", error);
+            fprintf(stderr, "Error in parse stock request: %s\n", response);
             continue;
         }
+
+        printf("Parsing successful\n");
+        printf("buffer_reception_ID_articles: %s\n", buffer_reception_ID_articles);
+        printf("buffer_reception_pos_articles: %s\n", buffer_reception_pos_articles);
                 
         // Choisir les articles dans les stocks
         // Liste des articles sélectionnés
@@ -219,77 +234,16 @@ void gestionnaire_inventaire(int se){
         }
         // On informe l'inventaire qu'on a bien pris en compte sa demande (on indique quels articles de l'inventaire vont être pris)
         // TODO
-    }
-}
 
-int choose_items_stocks(
-    char *item_names_requested[], int L_n_requested[], int count_requested,
-    char *item_names_stock[], int *L_n_stock[], int *L_x_stock[], int *L_y_stock[], int count_stock[],
-    SelectedItem selected_items[]
-) {
-    int i, j, k;
-    int total_selected = 0;
-
-    for (i = 0; i < count_requested; i++) {
-        int needed = L_n_requested[i];
-        selected_items[i].item_name = item_names_requested[i];
-        selected_items[i].positions = malloc(MAX_ARTICLES_LISTE_ATTENTE * sizeof(int *));
-        selected_items[i].quantities = malloc(MAX_ARTICLES_LISTE_ATTENTE * sizeof(int));
-        selected_items[i].count = 0;
-
-        // Chercher l'article dans le stock
-        for (j = 0; j < MAX_ARTICLES_LISTE_ATTENTE; j++) {
-            if (item_names_stock[j] != NULL && strcmp(item_names_requested[i], item_names_stock[j]) == 0) {
-                // Sélectionner les positions disponibles
-                for (k = 0; k < count_stock[j] && needed > 0; k++) {
-                    int available = L_n_stock[j][k];
-
-                    if (available > 0) {
-                        // Stocker les coordonnées [x, y]
-                        selected_items[i].positions[selected_items[i].count] = malloc(2 * sizeof(int));
-                        selected_items[i].positions[selected_items[i].count][0] = L_x_stock[j][k]; // x
-                        selected_items[i].positions[selected_items[i].count][1] = L_y_stock[j][k]; // y
-
-                        // Déterminer la quantité à prélever
-                        int taken = (needed < available) ? needed : available;
-                        selected_items[i].quantities[selected_items[i].count] = taken;
-                        selected_items[i].count++;
-
-                        needed -= taken;
-                    }
-                }
-            }
-        }
-        if (selected_items[i].count > 0) {
-            total_selected++;
+        // Free allocated memory
+        for (int i = 0; i < MAX_ARTICLES_LISTE_ATTENTE; i++) {
+            free(item_names_requested[i]);
+            free(L_n_stock[i]);
+            free(L_x_stock[i]);
+            free(L_y_stock[i]);
+            free(item_names_stock[i]);
         }
     }
-
-    return total_selected;
-}
-
-
-// message format: "itemName_N,itemName_N,..."
-char *parse_client_request(const char *request, int max_elements, int L_n[max_elements], char *item_names[max_elements], int *count){
-    char temp[strlen(request) + 1];
-    strcpy(temp, request); // Create a modifiable copy of the string
-    char name[MAX_ITEMS_NAME_SIZE];
-
-    char *token = strtok(temp, ",");
-    *count = 0;
-    while (token != NULL){
-        if(*count >= max_elements){
-            return "Too many items requested\n";
-        }
-        if (sscanf(token, "%[^_]_%d", name, &L_n[*count]) != 2){
-            return "Invalid request format\n";
-        }
-
-        item_names[*count] = strdup(name);
-        (*count)++;
-        token = strtok(NULL, ",");
-    }
-    return NULL;
 }
 
 // message format: "itemName1;N_X.Y,N_X.Y,.../itemName2;N_X.Y,..
