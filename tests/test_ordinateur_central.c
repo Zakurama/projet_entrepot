@@ -271,7 +271,7 @@ void test_selection_items(void) {
     int count_stock[] = {2, 2, 2, 2}; // Nombre de positions par article en stock
 
     // Liste des articles sélectionnés
-    SelectedItem selected_items[MAX_ARTICLES_LISTE_ATTENTE] = {0}; // Initialisation à zéro
+    Item selected_items[MAX_ARTICLES_LISTE_ATTENTE] = {0}; // Initialisation à zéro
 
     // Appel de la fonction
     int nb_selected = choose_items_stocks(
@@ -328,8 +328,8 @@ void test_update_shared_memory_stock(void) {
     // Initialisation de la structure Robot
     Robot robot = {0}; // Initialise tous les pointeurs à NULL
 
-    // Initialisation et allocation de SelectedItem
-    SelectedItem item;
+    // Initialisation et allocation de Item
+    Item item;
     item.item_name = "Item1";
     item.count = 1; // Un seul point sélectionné
 

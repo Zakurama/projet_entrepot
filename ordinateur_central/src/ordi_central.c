@@ -187,7 +187,7 @@ void receive_request_inventory(int client_sd,char *buffer_reception_ID_articles,
     }
 }
 
-void update_shared_memory_stock(Robot *robot, SelectedItem selected_item){
+void update_shared_memory_stock(Robot *robot, Item selected_item,int index_pos){
     // Trouver le prochain indice disponible pour ajouter un nouvel article
     int idx = 0;
     while (robot->item_name[idx] != NULL && idx < MAX_WAYPOINTS) {
@@ -202,23 +202,25 @@ void update_shared_memory_stock(Robot *robot, SelectedItem selected_item){
         // Ajouter les positions (copier les coordonnées du stock)
         robot->positions[idx] = (int *)malloc(2 * sizeof(int)); // Allouer de la mémoire pour [x, y]
         if (robot->positions[idx] != NULL) {
-            robot->positions[idx][0] = selected_item.positions[0][0]; // x
-            robot->positions[idx][1] = selected_item.positions[0][1]; // y
+            robot->positions[idx][0] = selected_item.positions[index_pos][0] + 1; // x, +1 car premier bac (1,1) et non (0,0)
+            robot->positions[idx][1] = selected_item.positions[index_pos][1] + 1; // y
         }
 
         // Ajouter les quantités
         robot->quantities[idx] = (int *)malloc(sizeof(int)); // Allouer de la mémoire pour la quantité
         if (robot->quantities[idx] != NULL) {
-            robot->quantities[idx][0] = selected_item.quantities[0];
+            robot->quantities[idx][0] = selected_item.quantities[index_pos];
         }
     }
 }
 
-int choose_items_stocks(char *item_names_requested[], int L_n_requested[], int count_requested,char *item_names_stock[], int *L_n_stock[], int *L_x_stock[], int *L_y_stock[], int count_stock[],SelectedItem selected_items[]) {
-    int i, j, k;
+int choose_items_stocks(char *item_names_requested[], int L_n_requested[], int count_requested,char *item_names_stock[], int *L_n_stock[], int *L_x_stock[], int *L_y_stock[], int count_stock[],Item selected_items[]) {
+    
+    // Choix fait de manière non optimisé : on prend les premiers articles que l'on trouve en parcourant le stock dans l'ordre
+
     int total_selected = 0;
 
-    for (i = 0; i < count_requested; i++) {
+    for (int i = 0; i < count_requested; i++) {
         int needed = L_n_requested[i];
         selected_items[i].item_name = item_names_requested[i];
         selected_items[i].positions = malloc(MAX_ARTICLES_LISTE_ATTENTE * sizeof(int *));
@@ -226,10 +228,10 @@ int choose_items_stocks(char *item_names_requested[], int L_n_requested[], int c
         selected_items[i].count = 0;
 
         // Chercher l'article dans le stock
-        for (j = 0; j < MAX_ARTICLES_LISTE_ATTENTE; j++) {
+        for (int j = 0; j < MAX_ARTICLES_LISTE_ATTENTE; j++) {
             if (item_names_stock[j] != NULL && strcmp(item_names_requested[i], item_names_stock[j]) == 0) {
                 // Sélectionner les positions disponibles
-                for (k = 0; k < count_stock[j] && needed > 0; k++) {
+                for (int k = 0; k < count_stock[j] && needed > 0; k++) {
                     int available = L_n_stock[j][k];
 
                     if (available > 0) {

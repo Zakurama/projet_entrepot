@@ -151,17 +151,41 @@ void gestionnaire_inventaire(int client_sd){
     receive_request_inventory(client_sd, buffer_reception_ID_articles, buffer_reception_pos_articles, item_names_requested, L_n_requested, L_n_stock, L_x_stock, L_y_stock, item_names_stock, &count_requested, count_stock,&nb_items);
     
     // On fait le choix des articles dans les stocks
-    SelectedItem selected_items[MAX_ARTICLES_LISTE_ATTENTE];
+    Item selected_items[MAX_ARTICLES_LISTE_ATTENTE];
     int nb_selected = choose_items_stocks(item_names_requested, L_n_requested, count_requested,item_names_stock, L_n_stock, L_x_stock, L_y_stock, count_stock,selected_items);
+
+    // On informe l'inventaire qu'on a bien pris en compte sa demande (on indique quels articles de l'inventaire vont être pris)
+    // TODO
 
     int ID_robot = 0;
     // On choisit le robot qui traitera la tâche et la position de l'article souhaité en stock
     for (int i = 0; i < nb_selected; i++) {
-        ID_robot = (ID_robot + 1) % NB_ROBOT; // Pour l'instant pas de choix optimal du robot, on prend juste à son tour les robots
-        // On met à jour ma mémoire partagée
-        CHECK(sem_wait(sem_memoire_robot[ID_robot]),"sem_wait(sem_memoire_robot)");
-        update_shared_memory_stock(robots[ID_robot],selected_items[i]);
-        CHECK(sem_post(sem_memoire_robot[ID_robot]),"sem_post(sem_memoire_robot)");
+        for (int j = 0;j<selected_items[i].count;j++){
+            // On met à jour sa mémoire partagée
+            CHECK(sem_wait(sem_memoire_robot[ID_robot]),"sem_wait(sem_memoire_robot)");
+            update_shared_memory_stock(robots[ID_robot],selected_items[i],j);
+            CHECK(sem_post(sem_memoire_robot[ID_robot]),"sem_post(sem_memoire_robot)");
+            ID_robot = (ID_robot + 1) % NB_ROBOT; // Pour l'instant pas de choix optimal du robot, on prend juste à son tour les robots
+        }
+    }
+
+    for(int ID_robot =0;ID_robot<NB_ROBOT;ID_robot++){
+
+        printf("Robot ID: %d\n", ID_robot);
+        for (int i = 0; i < MAX_WAYPOINTS; i++) {
+            if (robots[ID_robot]->waypoints[i] != 0)
+                printf("  - Waypoint: %d\n", robots[ID_robot]->waypoints[i]);
+            
+            if (robots[ID_robot]->item_name[i] != NULL)
+                printf("  - Item: %s\n", robots[ID_robot]->item_name[i]);
+
+            if (robots[ID_robot]->positions[i] != NULL)
+                printf("  - Position: (%d, %d)\n", robots[ID_robot]->positions[i][0], robots[ID_robot]->positions[i][1]);
+
+            if (robots[ID_robot]->quantities[i] != NULL)
+                printf("  - Quantity: %d\n", *robots[ID_robot]->quantities[i]);
+
+        }
     }
 
     // Free allocated memory
@@ -172,9 +196,6 @@ void gestionnaire_inventaire(int client_sd){
         free(L_y_stock[i]);
         free(item_names_stock[i]);
     }
-
-    // On informe l'inventaire qu'on a bien pris en compte sa demande (on indique quels articles de l'inventaire vont être pris)
-    // TODO
 
 }
 
