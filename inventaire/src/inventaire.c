@@ -447,16 +447,30 @@ void *handle_client(void *arg) {
                 strcpy(buff_emission, message);
             }
             else {
-                
-                // temporary until the central computer is implemented
-                //strcpy(buff_emission, "Sending request to central computer\n");
-
                 send_message(computer_sd, buff_reception);
                 
                 int nb_items_request;
-                char **item_names = parse_items_names(*items, *nb_items, buff_reception, &nb_items_request);
-                strcpy(buff_emission, transfer_stock(*items, *nb_items, *nb_rows, *nb_columns,(const char **) item_names, nb_items_request));
+                int max_items = 10;
+                char *item_names[max_items];
+                
+                for (int i = 0; i < max_items; i++) {
+                    item_names[i] = malloc(MAX_ITEMS_NAME_SIZE * sizeof(char));
+                    CHECK_ERROR(item_names[i], NULL, "Failed to allocate memory for item names");
+                }
+                
+                int L_n[max_items];
+                parse_client_request(buff_reception, max_items, L_n, item_names, &nb_items_request);
+                strcpy(buff_emission, transfer_stock(*items, *nb_items, *nb_rows, *nb_columns, (const char **) item_names, nb_items_request));
+                
+                for (int i = 0; i < max_items; i++) {
+                    free(item_names[i]);
+                }
+                
                 send_message(computer_sd ,buff_emission);
+
+
+
+                // code not tested yet, not implemented in ordinateur_central
 
                 recev_message(computer_sd, buff_reception);
                 pthread_mutex_lock(&stock_mutex);
@@ -467,6 +481,8 @@ void *handle_client(void *arg) {
                 } else {
                     strcpy(buff_emission, "Stock updated successfully\n");
                 }
+
+                // end of code not tested yet
 
             }
             
@@ -614,4 +630,27 @@ int get_item_index(item_t *items, int nb_items, const char *name) {
         }
     }
     return -1;
+}
+
+// message format: "itemName_N,itemName_N,..."
+char *parse_client_request(const char *request, int max_elements, int L_n[max_elements], char *item_names[max_elements], int *count){
+    char temp[strlen(request) + 1];
+    strcpy(temp, request); // Create a modifiable copy of the string
+    char name[MAX_ITEMS_NAME_SIZE];
+
+    char *token = strtok(temp, ",");
+    *count = 0;
+    while (token != NULL){
+        if(*count >= max_elements){
+            return "Too many items requested\n";
+        }
+        if (sscanf(token, "%[^_]_%d", name, &L_n[*count]) != 2){
+            return "Invalid request format\n";
+        }
+
+        item_names[*count] = strdup(name);
+        (*count)++;
+        token = strtok(NULL, ",");
+    }
+    return NULL;
 }
