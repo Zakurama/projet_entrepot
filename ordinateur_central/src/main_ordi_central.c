@@ -170,22 +170,7 @@ void gestionnaire_inventaire(int client_sd){
     }
 
     for(int ID_robot =0;ID_robot<NB_ROBOT;ID_robot++){
-
-        printf("Robot ID: %d\n", ID_robot);
-        for (int i = 0; i < MAX_WAYPOINTS; i++) {
-            if (robots[ID_robot]->waypoints[i] != 0)
-                printf("  - Waypoint: %d\n", robots[ID_robot]->waypoints[i]);
-            
-            if (robots[ID_robot]->item_name[i] != NULL)
-                printf("  - Item: %s\n", robots[ID_robot]->item_name[i]);
-
-            if (robots[ID_robot]->positions[i] != NULL)
-                printf("  - Position: (%d, %d)\n", robots[ID_robot]->positions[i][0], robots[ID_robot]->positions[i][1]);
-
-            if (robots[ID_robot]->quantities[i] != NULL)
-                printf("  - Quantity: %d\n", *robots[ID_robot]->quantities[i]);
-
-        }
+        print_robot_state(robots[ID_robot]);
     }
 
     // Free allocated memory

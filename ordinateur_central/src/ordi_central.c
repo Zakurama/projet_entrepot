@@ -258,6 +258,20 @@ int choose_items_stocks(char *item_names_requested[], int L_n_requested[], int c
     return total_selected;
 }
 
+void print_robot_state(Robot* robot){
+    printf("Robot ID: %d\n", robot->ID);
+    for (int i = 0; i < MAX_WAYPOINTS; i++) {
+        if (robot->waypoints[i] != 0)
+            printf("  - Waypoint: %d\n", robot->waypoints[i]);
+        if (robot->item_name[i] != NULL)
+            printf("  - Item: %s\n", robot->item_name[i]);
+        if (robot->positions[i] != NULL)
+            printf("  - Position: (%d, %d)\n", robot->positions[i][0], robot->positions[i][1]);
+        if (robot->quantities[i] != NULL)
+            printf("  - Quantity: %d\n", *robot->quantities[i]);
+    }
+}
+
 // message format: "itemName1;N_X.Y,N_X.Y,.../itemName2;N_X.Y,..
 char *parse_stock(const char *request, int max_elements, int *L_n[max_elements], int *L_x[max_elements], int *L_y[max_elements], char *item_names[max_elements], int count[max_elements], int *nb_items_request){
     char temp[strlen(request) + 1];
