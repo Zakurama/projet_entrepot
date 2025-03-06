@@ -14,13 +14,6 @@ char ip[IP_SIZE];
 void bye();
 void gestion_robot(int no);
 
-typedef struct {
-    int ID;
-    int waypoints[MAX_WAYPOINTS];
-    int liste_ID_articles[MAX_ARTICLES_LISTE_ATTENTE];
-    int position_articles[MAX_ARTICLES_LISTE_ATTENTE];
-} Robot;
-
 int shm[NB_ROBOT];
 size_t size_robot = sizeof(Robot);
 Robot* robots[NB_ROBOT];
@@ -78,7 +71,11 @@ int main(int argc, char *argv[]) {
                 // Gestionnaire communication inventaire
                 int se_inventaire = 0; // la définir au préalable
                 init_tcp_socket(&se_inventaire,LOCAL_IP,LOCAL_PORT,1);
-                gestionnaire_inventaire(se_inventaire);
+                listen_to(se_inventaire);
+                int client_sd = accept_client(se_inventaire);
+                while(1){
+                    gestionnaire_inventaire(client_sd);
+                }
             }
             if(i>0 && i<=NB_ROBOT){
                 // Processus de gestion des robots
@@ -120,6 +117,65 @@ void bye(){
         CHECK(sem_close(sem_memoire_robot[i]),"sem_close(sem_memoire_robot)");
         CHECK(sem_unlink(mutex_name),"sem_unlink(sem_memoire_robot)");
     }
+}
+
+void gestionnaire_inventaire(int client_sd){
+    // Allocation et initialisation des tableaux
+    char buffer_reception_ID_articles[MAXOCTETS];
+    char buffer_reception_pos_articles[MAXOCTETS];
+
+    char *item_names_requested[MAX_ARTICLES_LISTE_ATTENTE];
+    for (int i = 0; i < MAX_ARTICLES_LISTE_ATTENTE; i++) {
+        item_names_requested[i] = malloc(MAX_ITEMS_NAME_SIZE * sizeof(char));
+    }
+
+    int L_n_requested[MAX_ARTICLES_LISTE_ATTENTE];
+
+    // Allocation pour les stocks
+    int *L_n_stock[MAX_ARTICLES_LISTE_ATTENTE];
+    int *L_x_stock[MAX_ARTICLES_LISTE_ATTENTE];
+    int *L_y_stock[MAX_ARTICLES_LISTE_ATTENTE];
+    char *item_names_stock[MAX_ARTICLES_LISTE_ATTENTE];
+
+    for (int i = 0; i < MAX_ARTICLES_LISTE_ATTENTE; i++) {
+        L_n_stock[i] = malloc(MAX_ARTICLES_LISTE_ATTENTE * sizeof(int));
+        L_x_stock[i] = malloc(MAX_ARTICLES_LISTE_ATTENTE * sizeof(int));
+        L_y_stock[i] = malloc(MAX_ARTICLES_LISTE_ATTENTE * sizeof(int));
+        item_names_stock[i] = malloc(MAX_ITEMS_NAME_SIZE * sizeof(char));
+    }
+
+    int count_stock[MAX_ARTICLES_LISTE_ATTENTE]; // nombre de positions par article
+    int count_requested; // nombre d'articles demandés
+    int nb_items;
+    // On récupère les demandes de l'inventaire
+    receive_request_inventory(client_sd, buffer_reception_ID_articles, buffer_reception_pos_articles, item_names_requested, L_n_requested, L_n_stock, L_x_stock, L_y_stock, item_names_stock, &count_requested, count_stock,&nb_items);
+    
+    // On fait le choix des articles dans les stocks
+    SelectedItem selected_items[MAX_ARTICLES_LISTE_ATTENTE];
+    int nb_selected = choose_items_stocks(item_names_requested, L_n_requested, count_requested,item_names_stock, L_n_stock, L_x_stock, L_y_stock, count_stock,selected_items);
+
+    int ID_robot = 0;
+    // On choisit le robot qui traitera la tâche et la position de l'article souhaité en stock
+    for (int i = 0; i < nb_selected; i++) {
+        ID_robot = (ID_robot + 1) % NB_ROBOT; // Pour l'instant pas de choix optimal du robot, on prend juste à son tour les robots
+        // On met à jour ma mémoire partagée
+        CHECK(sem_wait(sem_memoire_robot[ID_robot]),"sem_wait(sem_memoire_robot)");
+        update_shared_memory_stock(robots[ID_robot],selected_items[i]);
+        CHECK(sem_post(sem_memoire_robot[ID_robot]),"sem_post(sem_memoire_robot)");
+    }
+
+    // Free allocated memory
+    for (int i = 0; i < MAX_ARTICLES_LISTE_ATTENTE; i++) {
+        free(item_names_requested[i]);
+        free(L_n_stock[i]);
+        free(L_x_stock[i]);
+        free(L_y_stock[i]);
+        free(item_names_stock[i]);
+    }
+
+    // On informe l'inventaire qu'on a bien pris en compte sa demande (on indique quels articles de l'inventaire vont être pris)
+    // TODO
+
 }
 
 void gestion_robot(int no){

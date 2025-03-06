@@ -167,83 +167,93 @@ void trajectoire(const char* pos_initiale, const char* pos_finale, char path[MAX
     }
 }
 
-void gestionnaire_inventaire(int se){
-    char buffer_reception_ID_articles[MAXOCTETS];
-    char buffer_reception_pos_articles[MAXOCTETS];
-    // int ID_articles[MAX_ARTICLES_LISTE_ATTENTE];
-    // int positions_possibles_articles[MAX_ARTICLES_LISTE_ATTENTE][MAX_ESPACE_STOCK];
-    // int positions_choisies_articles[MAX_ARTICLES_LISTE_ATTENTE];
-    int ID_robot = 0;
-    listen_to(se);
-    int client_sd = accept_client(se);
-    while (1){
+void receive_request_inventory(int client_sd,char *buffer_reception_ID_articles, char *buffer_reception_pos_articles,char *item_names_requested[MAX_ARTICLES_LISTE_ATTENTE],int L_n_requested[MAX_ARTICLES_LISTE_ATTENTE],int *L_n_stock[MAX_ARTICLES_LISTE_ATTENTE], int *L_x_stock[MAX_ARTICLES_LISTE_ATTENTE], int *L_y_stock[MAX_ARTICLES_LISTE_ATTENTE], char *item_names_stock[MAX_ARTICLES_LISTE_ATTENTE], int* count_requested, int count_stock[MAX_ARTICLES_LISTE_ATTENTE],int* nb_items) {
 
-        // On attend une commande de l'inventaire
-        recev_message(client_sd, buffer_reception_ID_articles); // la liste des articles (ID)
-        recev_message(client_sd, buffer_reception_pos_articles); // la liste des positions
+    // On attend une commande de l'inventaire
+    recev_message(client_sd, buffer_reception_ID_articles); // la liste des articles (ID)
+    recev_message(client_sd, buffer_reception_pos_articles); // la liste des positions
 
-        // On extrait les articles demandés et leurs positions
-        char *item_names_requested[MAX_ARTICLES_LISTE_ATTENTE];
+    // On extrait les articles demandés et leurs positions
+    char *error = parse_client_request(buffer_reception_ID_articles, MAX_ARTICLES_LISTE_ATTENTE, L_n_requested, item_names_requested,count_requested);
+    if (error != NULL) {
+        fprintf(stderr, "Error in parse client request: %s\n", error);
+        return; // Vous pouvez aussi gérer l'erreur autrement selon votre logique
+    }
 
-        for (int i = 0; i < MAX_ARTICLES_LISTE_ATTENTE; i++) {
-            item_names_requested[i] = malloc(MAX_ITEMS_NAME_SIZE * sizeof(char));
+    char *response = parse_stock(buffer_reception_pos_articles, MAX_ARTICLES_LISTE_ATTENTE, L_n_stock, L_x_stock, L_y_stock, item_names_stock, count_stock, nb_items);
+    if (response != NULL) {
+        fprintf(stderr, "Error in parse stock request: %s\n", response);
+        return;
+    }
+}
+
+void update_shared_memory_stock(Robot *robot, SelectedItem selected_item){
+    // Trouver le prochain indice disponible pour ajouter un nouvel article
+    int idx = 0;
+    while (robot->item_name[idx] != NULL && idx < MAX_WAYPOINTS) {
+        idx++; // Trouver la prochaine place vide
+    }
+    
+    // Ajouter le nouvel item
+    if (idx < MAX_WAYPOINTS) {
+        // Ajouter le nom de l'article
+        robot->item_name[idx] = selected_item.item_name;
+
+        // Ajouter les positions (copier les coordonnées du stock)
+        robot->positions[idx] = (int *)malloc(2 * sizeof(int)); // Allouer de la mémoire pour [x, y]
+        if (robot->positions[idx] != NULL) {
+            robot->positions[idx][0] = selected_item.positions[0][0]; // x
+            robot->positions[idx][1] = selected_item.positions[0][1]; // y
         }
 
-        int L_n_requested[MAX_ARTICLES_LISTE_ATTENTE];
-        int count;
-        char *error = parse_client_request(buffer_reception_ID_articles, MAX_ARTICLES_LISTE_ATTENTE, L_n_requested, item_names_requested, &count);
-        if (error != NULL) {
-            fprintf(stderr, "Error in parse client request: %s\n", error);
-            continue;
-        }
-
-        int *L_n_stock[MAX_ARTICLES_LISTE_ATTENTE]; // liste des valeurs sur une position par article
-        int *L_x_stock[MAX_ARTICLES_LISTE_ATTENTE]; // liste des allées par article
-        int *L_y_stock[MAX_ARTICLES_LISTE_ATTENTE]; // liste des bacs par article
-        char *item_names_stock[MAX_ARTICLES_LISTE_ATTENTE];
-
-        for (int i = 0; i < MAX_ARTICLES_LISTE_ATTENTE; i++) {
-            L_n_stock[i] = malloc(MAX_ARTICLES_LISTE_ATTENTE * sizeof(int));
-            L_x_stock[i] = malloc(MAX_ARTICLES_LISTE_ATTENTE * sizeof(int));
-            L_y_stock[i] = malloc(MAX_ARTICLES_LISTE_ATTENTE * sizeof(int));
-            item_names_stock[i] = malloc(MAX_ITEMS_NAME_SIZE * sizeof(char));
-        }
-
-        int count_stock[MAX_ARTICLES_LISTE_ATTENTE]; // nombre de positions par article
-        int nb_items;
-        char *response = parse_stock(buffer_reception_pos_articles, MAX_ARTICLES_LISTE_ATTENTE, L_n_stock, L_x_stock, L_y_stock, item_names_stock, count_stock, &nb_items);
-        if (response!=NULL){
-            fprintf(stderr, "Error in parse stock request: %s\n", response);
-            continue;
-        }
-
-        printf("Parsing successful\n");
-        printf("buffer_reception_ID_articles: %s\n", buffer_reception_ID_articles);
-        printf("buffer_reception_pos_articles: %s\n", buffer_reception_pos_articles);
-                
-        // Choisir les articles dans les stocks
-        // Liste des articles sélectionnés
-        SelectedItem selected_items[MAX_ARTICLES_LISTE_ATTENTE];
-        int nb_selected = choose_items_stocks(item_names_requested, L_n_requested, count_requested,item_names_stock, L_n_stock, L_x_stock, L_y_stock, count_stock,selected_items);
-
-        // On choisit le robot qui traitera la tâche et la position de l'article souhaité en stock
-        for(int i = 0; i < nb_selected; i++){
-            ID_robot = (ID_robot+1)%NB_ROBOT; // Pour l'instant pas de choix optimal du robot on prends juste à son tour les robots
-            // On met à jour la liste des articles et la liste de position du robot
-            // TODO (memoire partagée)
-        }
-        // On informe l'inventaire qu'on a bien pris en compte sa demande (on indique quels articles de l'inventaire vont être pris)
-        // TODO
-
-        // Free allocated memory
-        for (int i = 0; i < MAX_ARTICLES_LISTE_ATTENTE; i++) {
-            free(item_names_requested[i]);
-            free(L_n_stock[i]);
-            free(L_x_stock[i]);
-            free(L_y_stock[i]);
-            free(item_names_stock[i]);
+        // Ajouter les quantités
+        robot->quantities[idx] = (int *)malloc(sizeof(int)); // Allouer de la mémoire pour la quantité
+        if (robot->quantities[idx] != NULL) {
+            robot->quantities[idx][0] = selected_item.quantities[0];
         }
     }
+}
+
+int choose_items_stocks(char *item_names_requested[], int L_n_requested[], int count_requested,char *item_names_stock[], int *L_n_stock[], int *L_x_stock[], int *L_y_stock[], int count_stock[],SelectedItem selected_items[]) {
+    int i, j, k;
+    int total_selected = 0;
+
+    for (i = 0; i < count_requested; i++) {
+        int needed = L_n_requested[i];
+        selected_items[i].item_name = item_names_requested[i];
+        selected_items[i].positions = malloc(MAX_ARTICLES_LISTE_ATTENTE * sizeof(int *));
+        selected_items[i].quantities = malloc(MAX_ARTICLES_LISTE_ATTENTE * sizeof(int));
+        selected_items[i].count = 0;
+
+        // Chercher l'article dans le stock
+        for (j = 0; j < MAX_ARTICLES_LISTE_ATTENTE; j++) {
+            if (item_names_stock[j] != NULL && strcmp(item_names_requested[i], item_names_stock[j]) == 0) {
+                // Sélectionner les positions disponibles
+                for (k = 0; k < count_stock[j] && needed > 0; k++) {
+                    int available = L_n_stock[j][k];
+
+                    if (available > 0) {
+                        // Stocker les coordonnées [x, y]
+                        selected_items[i].positions[selected_items[i].count] = malloc(2 * sizeof(int));
+                        selected_items[i].positions[selected_items[i].count][0] = L_x_stock[j][k]; // x
+                        selected_items[i].positions[selected_items[i].count][1] = L_y_stock[j][k]; // y
+
+                        // Déterminer la quantité à prélever
+                        int taken = (needed < available) ? needed : available;
+                        selected_items[i].quantities[selected_items[i].count] = taken;
+                        selected_items[i].count++;
+
+                        needed -= taken;
+                    }
+                }
+            }
+        }
+        if (selected_items[i].count > 0) {
+            total_selected++;
+        }
+    }
+
+    return total_selected;
 }
 
 // message format: "itemName1;N_X.Y,N_X.Y,.../itemName2;N_X.Y,..

@@ -237,7 +237,8 @@ void test_parse_stock_empty_request(void) {
     }
 }
 
-void test_selection_items(void){
+// Fonction de test pour CUnit
+void test_selection_items(void) {
     // Liste des articles demandés par le client
     char *item_names_requested[] = {"Banane", "Pomme", "Raisin"};
     int L_n_requested[] = {6, 5, 8}; // Quantités demandées
@@ -245,57 +246,130 @@ void test_selection_items(void){
 
     // Stock disponible
     char *item_names_stock[] = {"Banane", "Pomme", "Orange", "Raisin"};
-    int L_n_stock_0[] = {5, 6};  // Stock de "Banane" à deux positions
-    int L_n_stock_1[] = {3, 2};  // Stock de "Pomme" à deux positions
+    int L_n_stock_0[] = {5, 6};  // Stock de "Banane" (2 positions)
+    int L_n_stock_1[] = {3, 2};  // Stock de "Pomme" (2 positions)
     int L_n_stock_2[] = {4, 7};  // Stock de "Orange" (non demandé)
-    int L_n_stock_3[] = {2, 6};  // Stock de "Raisin" à deux positions
+    int L_n_stock_3[] = {2, 6};  // Stock de "Raisin" (2 positions)
 
-    // Pointeurs vers les stocks
     int *L_n_stock[] = {L_n_stock_0, L_n_stock_1, L_n_stock_2, L_n_stock_3};
 
-    // Position des articles dans l'entrepôt (allées et bacs)
+    // Positions des articles en stock (allées et bacs)
     int L_x_stock_0[] = {1, 2};
     int L_x_stock_1[] = {3, 4};
     int L_x_stock_2[] = {5, 6};
     int L_x_stock_3[] = {7, 8};
+
     int *L_x_stock[] = {L_x_stock_0, L_x_stock_1, L_x_stock_2, L_x_stock_3};
 
     int L_y_stock_0[] = {10, 11};
     int L_y_stock_1[] = {12, 13};
     int L_y_stock_2[] = {14, 15};
     int L_y_stock_3[] = {16, 17};
+
     int *L_y_stock[] = {L_y_stock_0, L_y_stock_1, L_y_stock_2, L_y_stock_3};
 
-    int count_stock[] = {2, 2, 2, 2}; // Nombre de positions pour chaque article en stock
+    int count_stock[] = {2, 2, 2, 2}; // Nombre de positions par article en stock
 
     // Liste des articles sélectionnés
-    SelectedItem selected_items[MAX_ARTICLES_LISTE_ATTENTE];
+    SelectedItem selected_items[MAX_ARTICLES_LISTE_ATTENTE] = {0}; // Initialisation à zéro
 
     // Appel de la fonction
-    int nb_selected = choose_items_stocks(item_names_requested, L_n_requested, count_requested,item_names_stock, L_n_stock, L_x_stock, L_y_stock, count_stock,selected_items);
+    int nb_selected = choose_items_stocks(
+        item_names_requested, L_n_requested, count_requested,
+        item_names_stock, L_n_stock, L_x_stock, L_y_stock, count_stock,
+        selected_items
+    );
 
-    // Affichage des résultats
-    printf("Articles sélectionnés :\n");
+    // Vérifications avec CUnit
+    CU_ASSERT_EQUAL(nb_selected, 3); // Vérifier que 3 articles ont été sélectionnés
+
+    // Vérification du premier article (Banane)
+    CU_ASSERT_STRING_EQUAL(selected_items[0].item_name, "Banane");
+    CU_ASSERT_EQUAL(selected_items[0].count, 2);
+    CU_ASSERT_EQUAL(selected_items[0].positions[0][0], 1);
+    CU_ASSERT_EQUAL(selected_items[0].positions[0][1], 10);
+    CU_ASSERT_EQUAL(selected_items[0].positions[1][0], 2);
+    CU_ASSERT_EQUAL(selected_items[0].positions[1][1], 11);
+    CU_ASSERT_EQUAL(selected_items[0].quantities[0], 5);
+    CU_ASSERT_EQUAL(selected_items[0].quantities[1], 1); // La somme doit faire 6
+
+    // Vérification du second article (Pomme)
+    CU_ASSERT_STRING_EQUAL(selected_items[1].item_name, "Pomme");
+    CU_ASSERT_EQUAL(selected_items[1].count, 2);
+    CU_ASSERT_EQUAL(selected_items[1].positions[0][0], 3);
+    CU_ASSERT_EQUAL(selected_items[1].positions[0][1], 12);
+    CU_ASSERT_EQUAL(selected_items[1].positions[1][0], 4);
+    CU_ASSERT_EQUAL(selected_items[1].positions[1][1], 13);
+    CU_ASSERT_EQUAL(selected_items[1].quantities[0], 3);
+    CU_ASSERT_EQUAL(selected_items[1].quantities[1], 2); // La somme doit faire 5
+
+    // Vérification du troisième article (Raisin)
+    CU_ASSERT_STRING_EQUAL(selected_items[2].item_name, "Raisin");
+    CU_ASSERT_EQUAL(selected_items[2].count, 2);
+    CU_ASSERT_EQUAL(selected_items[2].positions[0][0], 7);
+    CU_ASSERT_EQUAL(selected_items[2].positions[0][1], 16);
+    CU_ASSERT_EQUAL(selected_items[2].positions[1][0], 8);
+    CU_ASSERT_EQUAL(selected_items[2].positions[1][1], 17);
+    CU_ASSERT_EQUAL(selected_items[2].quantities[0], 2);
+    CU_ASSERT_EQUAL(selected_items[2].quantities[1], 6); // La somme doit faire 8
+
+    // Libération de la mémoire allouée dans `selected_items`
     for (int i = 0; i < nb_selected; i++) {
-        printf("Article: %s\n", selected_items[i].item_name);
-        printf("Positions: [ ");
-        for (int j = 0; j < selected_items[i].count; j++) {
-            printf("[%d, %d] ", selected_items[i].positions[j][0], selected_items[i].positions[j][1]);
-        }
-        printf("]\n");
-        printf("Quantités: [ ");
-        for (int j = 0; j < selected_items[i].count; j++) {
-            printf("%d ", selected_items[i].quantities[j]);
-        }
-        printf("]\n");
-
-        // Libération de la mémoire
         for (int j = 0; j < selected_items[i].count; j++) {
             free(selected_items[i].positions[j]);
         }
         free(selected_items[i].positions);
         free(selected_items[i].quantities);
     }
+}
+
+
+void test_update_shared_memory_stock(void) {
+    // Initialisation de la structure Robot
+    Robot robot = {0}; // Initialise tous les pointeurs à NULL
+
+    // Initialisation et allocation de SelectedItem
+    SelectedItem item;
+    item.item_name = "Item1";
+    item.count = 1; // Un seul point sélectionné
+
+    // Allocation de mémoire pour positions et quantities
+    item.positions = (int **)malloc(item.count * sizeof(int *));
+    item.quantities = (int *)malloc(item.count * sizeof(int));
+
+    // Vérification de l'allocation
+    CU_ASSERT_PTR_NOT_NULL_FATAL(item.positions);
+    CU_ASSERT_PTR_NOT_NULL_FATAL(item.quantities);
+
+    // Allocation pour chaque position [x, y]
+    item.positions[0] = (int *)malloc(2 * sizeof(int));
+    CU_ASSERT_PTR_NOT_NULL_FATAL(item.positions[0]);
+
+    // Initialisation des valeurs
+    item.positions[0][0] = 5;
+    item.positions[0][1] = 10;
+    item.quantities[0] = 3;
+
+    // Appel de la fonction
+    update_shared_memory_stock(&robot, item);
+
+    // Vérification que l'élément a été ajouté correctement
+    CU_ASSERT_PTR_NOT_NULL(robot.item_name[0]);
+    CU_ASSERT_STRING_EQUAL(robot.item_name[0], "Item1");
+
+    CU_ASSERT_PTR_NOT_NULL(robot.positions[0]);
+    CU_ASSERT_EQUAL(robot.positions[0][0], 5);
+    CU_ASSERT_EQUAL(robot.positions[0][1], 10);
+
+    CU_ASSERT_PTR_NOT_NULL(robot.quantities[0]);
+    CU_ASSERT_EQUAL(robot.quantities[0][0], 3);
+
+    // Libération de la mémoire allouée
+    free(item.positions[0]);
+    free(item.positions);
+    free(item.quantities);
+    free(robot.positions[0]);
+    free(robot.quantities[0]);
 }
 
 int main() {
@@ -334,11 +408,19 @@ int main() {
         return CU_get_error();
     }
 
+    if (NULL == CU_add_test(suite, "test add item in shared memory", test_update_shared_memory_stock)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
+    if (NULL == CU_add_test(suite, "test select item in stocks", test_selection_items)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
     CU_basic_set_mode(CU_BRM_VERBOSE);
     CU_basic_run_tests();
     CU_cleanup_registry();
-
-    test_selection_items();
 
     return 0;
 }

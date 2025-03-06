@@ -34,9 +34,21 @@ typedef struct {
     int count;       // Nombre de positions sélectionnées
 } SelectedItem;
 
+typedef struct {
+    int ID;
+    int waypoints[MAX_WAYPOINTS];
+    
+    char *item_name[MAX_WAYPOINTS];
+    int *positions[MAX_WAYPOINTS];
+    int *quantities[MAX_WAYPOINTS];
+
+} Robot;
+
 void trajectoire(const char* pos_initiale, const char* pos_finale, char path[MAX_WAYPOINTS][SIZE_POS]);
 void gestionnaire_inventaire(int se);
 char *parse_stock(const char *request, int max_elements, int *L_n[max_elements], int *L_x[max_elements], int *L_y[max_elements], char *item_names[max_elements], int count[max_elements], int *nb_items_request);
 int choose_items_stocks(char *item_names_requested[], int L_n_requested[], int count_requested,char *item_names_stock[], int *L_n_stock[], int *L_x_stock[], int *L_y_stock[], int count_stock[],SelectedItem selected_items[]);
+void update_shared_memory_stock(Robot *shared_memory,SelectedItem selected_items);
+void receive_request_inventory(int client_sd,char *buffer_reception_ID_articles, char *buffer_reception_pos_articles,char *item_names_requested[MAX_ARTICLES_LISTE_ATTENTE],int L_n_requested[MAX_ARTICLES_LISTE_ATTENTE],int *L_n_stock[MAX_ARTICLES_LISTE_ATTENTE], int *L_x_stock[MAX_ARTICLES_LISTE_ATTENTE], int *L_y_stock[MAX_ARTICLES_LISTE_ATTENTE], char *item_names_stock[MAX_ARTICLES_LISTE_ATTENTE], int* count_requested, int count_stock[MAX_ARTICLES_LISTE_ATTENTE],int* nb_items);
 
 #endif
