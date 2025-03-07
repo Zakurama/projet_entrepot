@@ -143,10 +143,15 @@ void gestionnaire_inventaire(int client_sd){
     int *chosen_y_positions[MAX_ARTICLES_LISTE_ATTENTE];
     int *chosen_quantities[MAX_ARTICLES_LISTE_ATTENTE];
     int chosen_counts[MAX_ARTICLES_LISTE_ATTENTE];
-    Item selected_items[MAX_ARTICLES_LISTE_ATTENTE];
+    Item_selected selected_items[MAX_ARTICLES_LISTE_ATTENTE];
 
     // On récupère les demandes de l'inventaire
-    receive_request_and_stock_inventory(client_sd, buffer_reception_ID_articles, buffer_reception_pos_articles, item_names_requested, L_n_requested, L_n_stock, L_x_stock, L_y_stock, item_names_stock, &count_requested, count_stock,&nb_items);
+    recev_message(client_sd, buffer_reception_ID_articles); // la liste des articles (ID)
+    recev_message(client_sd, buffer_reception_pos_articles); // la liste des positions
+    char *error =  convert_request_strings_to_lists(buffer_reception_ID_articles, buffer_reception_pos_articles, item_names_requested, L_n_requested, L_n_stock, L_x_stock, L_y_stock, item_names_stock, &count_requested, count_stock,&nb_items);
+    if (error != NULL) {
+        return;
+    }
     
     // On fait le choix des articles dans les stocks
     int nb_selected = choose_items_stocks(item_names_requested, L_n_requested, count_requested,item_names_stock, L_n_stock, L_x_stock, L_y_stock, count_stock,selected_items);
