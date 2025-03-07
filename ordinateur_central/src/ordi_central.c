@@ -38,7 +38,7 @@ void trajectoire(const char* pos_initiale, const char* pos_finale, char path[MAX
     }
     
     while (pos_index!=pos_finale_index || type_pos!=type_pos_finale){
-        char holder_name_place[20];
+        char holder_name_place[SIZE_POS];
         
         if(type_pos == 'P'){
             // On est au parking
@@ -188,7 +188,7 @@ char* convert_request_strings_to_lists(char *buffer_reception_ID_articles, char 
 
     char *response = parse_stock(buffer_reception_pos_articles, MAX_ARTICLES_LISTE_ATTENTE, L_n_stock, L_x_stock, L_y_stock, item_names_stock, count_stock, nb_items);
     if (response != NULL) {
-        return error;
+        return response;
     }
     return NULL;
 }
