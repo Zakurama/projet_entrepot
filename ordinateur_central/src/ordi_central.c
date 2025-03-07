@@ -38,7 +38,7 @@ void trajectoire(const char* pos_initiale, const char* pos_finale, char path[MAX
     }
     
     while (pos_index!=pos_finale_index || type_pos!=type_pos_finale){
-        char holder_name_place[20];
+        char holder_name_place[SIZE_POS];
         
         if(type_pos == 'P'){
             // On est au parking
@@ -167,78 +167,147 @@ void trajectoire(const char* pos_initiale, const char* pos_finale, char path[MAX
     }
 }
 
-void gestionnaire_inventaire(int se){
-    char buffer_reception_ID_articles[MAXOCTETS];
-    char buffer_reception_pos_articles[MAXOCTETS];
-    // int ID_articles[MAX_ARTICLES_LISTE_ATTENTE];
-    // int positions_possibles_articles[MAX_ARTICLES_LISTE_ATTENTE][MAX_ESPACE_STOCK];
-    // int positions_choisies_articles[MAX_ARTICLES_LISTE_ATTENTE];
-    // int ID_robot;
-    // // Initialiser une connexion TCP avec l'inventaire
-    while (1){
+char* convert_request_strings_to_lists(char *buffer_reception_ID_articles, char *buffer_reception_pos_articles,char *item_names_requested[MAX_ARTICLES_LISTE_ATTENTE],int L_n_requested[MAX_ARTICLES_LISTE_ATTENTE],int *L_n_stock[MAX_ARTICLES_LISTE_ATTENTE], int *L_x_stock[MAX_ARTICLES_LISTE_ATTENTE], int *L_y_stock[MAX_ARTICLES_LISTE_ATTENTE], char *item_names_stock[MAX_ARTICLES_LISTE_ATTENTE], int* count_requested, int count_stock[MAX_ARTICLES_LISTE_ATTENTE],int* nb_items) {
 
-        // On attend une commande de l'inventaire
-        recev_message(se, buffer_reception_ID_articles); // la liste des articles (ID)
-        recev_message(se, buffer_reception_pos_articles); // la liste des positions
-
-        // On extrait les articles demandés et leurs positions
-        // TODO : Faire du parsing
-        char *item_names_requested[MAX_ARTICLES_LISTE_ATTENTE];
-        int L_n_requested[MAX_ARTICLES_LISTE_ATTENTE];
-        int count;
-        char *error = parse_client_request(buffer_reception_ID_articles, MAX_ARTICLES_LISTE_ATTENTE, L_n_requested, item_names_requested, &count);
-        if (error != NULL) {
-            fprintf(stderr, "Error in parse client request: %s\n", error);
-            continue;
-        }
-
-        int *L_n_stock[MAX_ARTICLES_LISTE_ATTENTE]; // liste des valeurs sur une position par article
-        int *L_x_stock[MAX_ARTICLES_LISTE_ATTENTE]; // liste des allées par article
-        int *L_y_stock[MAX_ARTICLES_LISTE_ATTENTE]; // liste des bacs par article
-        char *item_names_stock[MAX_ARTICLES_LISTE_ATTENTE];
-        int count_stock[MAX_ARTICLES_LISTE_ATTENTE]; // nombre de positions par article
-        int nb_items;
-
-        char *response = parse_stock(buffer_reception_pos_articles, MAX_ARTICLES_LISTE_ATTENTE, L_n_stock, L_x_stock, L_y_stock, item_names_stock, count_stock, &nb_items);
-        if (response!=NULL){
-            fprintf(stderr, "Error in parse stock request: %s\n", error);
-            continue;
-        }
-
-
-        // On choisit le robot qui traitera la tâche et la position de l'article souhaité en stock
-        // ID_robot = rand()%NB_ROBOT; // Pour l'instant pas de choix optimal du robot
-
-        // On met à jour la liste des articles et la liste de position du robot
-        // TODO
-
-        // On informe l'inventaire qu'on a bien pris en compte sa demande (on indique quels articles de l'inventaire vont être pris)
-        // TODO
+    for (int i = 0; i < MAX_ARTICLES_LISTE_ATTENTE; i++) {
+        item_names_requested[i] = malloc(MAX_ITEMS_NAME_SIZE * sizeof(char));
     }
-}
 
-// message format: "itemName_N,itemName_N,..."
-char *parse_client_request(const char *request, int max_elements, int L_n[max_elements], char *item_names[max_elements], int *count){
-    char temp[strlen(request) + 1];
-    strcpy(temp, request); // Create a modifiable copy of the string
-    char name[MAX_ITEMS_NAME_SIZE];
+    for (int i = 0; i < MAX_ARTICLES_LISTE_ATTENTE; i++) {
+        L_n_stock[i] = malloc(MAX_ARTICLES_LISTE_ATTENTE * sizeof(int));
+        L_x_stock[i] = malloc(MAX_ARTICLES_LISTE_ATTENTE * sizeof(int));
+        L_y_stock[i] = malloc(MAX_ARTICLES_LISTE_ATTENTE * sizeof(int));
+        item_names_stock[i] = malloc(MAX_ITEMS_NAME_SIZE * sizeof(char));
+    }
 
-    char *token = strtok(temp, ",");
-    *count = 0;
-    while (token != NULL){
-        if(*count >= max_elements){
-            return "Too many items requested\n";
-        }
-        if (sscanf(token, "%[^_]_%d", name, &L_n[*count]) != 2){
-            return "Invalid request format\n";
-        }
+    // On extrait les articles demandés et leurs positions
+    char *error = parse_client_request(buffer_reception_ID_articles, MAX_ARTICLES_LISTE_ATTENTE, L_n_requested, item_names_requested,count_requested);
+    if (error != NULL) {
+        return error;
+    }
 
-        item_names[*count] = strdup(name);
-        (*count)++;
-        token = strtok(NULL, ",");
+    char *response = parse_stock(buffer_reception_pos_articles, MAX_ARTICLES_LISTE_ATTENTE, L_n_stock, L_x_stock, L_y_stock, item_names_stock, count_stock, nb_items);
+    if (response != NULL) {
+        return response;
     }
     return NULL;
 }
+
+void update_shared_memory_stock(Robot *robot, Item_selected selected_item,int index_pos){
+    // Trouver le prochain indice disponible pour ajouter un nouvel article
+    int idx = 0;
+    while (robot->item_name[idx] != NULL && idx < MAX_WAYPOINTS) {
+        idx++; // Trouver la prochaine place vide
+    }
+    
+    // Ajouter le nouvel Item_selected
+    if (idx < MAX_WAYPOINTS) {
+        // Ajouter le nom de l'article
+        robot->item_name[idx] = selected_item.item_name;
+
+        // Ajouter les positions (copier les coordonnées du stock)
+        robot->positions[idx] = (int *)malloc(2 * sizeof(int)); // Allouer de la mémoire pour [x, y]
+        if (robot->positions[idx] != NULL) {
+            robot->positions[idx][0] = selected_item.positions[index_pos][0] + 1; // x, +1 car premier bac (1,1) et non (0,0)
+            robot->positions[idx][1] = selected_item.positions[index_pos][1] + 1; // y
+        }
+
+        // Ajouter les quantités
+        robot->quantities[idx] = (int *)malloc(sizeof(int)); // Allouer de la mémoire pour la quantité
+        if (robot->quantities[idx] != NULL) {
+            robot->quantities[idx][0] = selected_item.quantities[index_pos];
+        }
+    }
+}
+
+int choose_items_stocks(char *item_names_requested[], int L_n_requested[], int count_requested,char *item_names_stock[], int *L_n_stock[], int *L_x_stock[], int *L_y_stock[], int count_stock[],Item_selected selected_items[]) {
+    
+    // Choix fait de manière non optimisé : on prend les premiers articles que l'on trouve en parcourant le stock dans l'ordre
+
+    int total_selected = 0;
+
+    for (int i = 0; i < count_requested; i++) {
+        int needed = L_n_requested[i];
+        selected_items[i].item_name = item_names_requested[i];
+        selected_items[i].positions = malloc(MAX_ARTICLES_LISTE_ATTENTE * sizeof(int *));
+        selected_items[i].quantities = malloc(MAX_ARTICLES_LISTE_ATTENTE * sizeof(int));
+        selected_items[i].count = 0;
+
+        // Chercher l'article dans le stock
+        for (int j = 0; j < MAX_ARTICLES_LISTE_ATTENTE; j++) {
+            if (!(item_names_stock[j] != NULL && strcmp(item_names_requested[i], item_names_stock[j]) == 0)) {
+                continue;
+            }
+            // Sélectionner les positions disponibles
+            for (int k = 0; k < count_stock[j] && needed > 0; k++) {
+                int available = L_n_stock[j][k];
+
+
+                if (available <= 0) {
+                    continue;
+                }
+
+                // Stocker les coordonnées [x, y]
+                selected_items[i].positions[selected_items[i].count] = malloc(2 * sizeof(int));
+                selected_items[i].positions[selected_items[i].count][0] = L_x_stock[j][k]; // x
+                selected_items[i].positions[selected_items[i].count][1] = L_y_stock[j][k]; // y
+
+                // Déterminer la quantité à prélever
+                int taken = (needed < available) ? needed : available;
+                selected_items[i].quantities[selected_items[i].count] = taken;
+                selected_items[i].count++;
+
+                needed -= taken;
+            }
+        }
+        if (selected_items[i].count > 0) {
+            total_selected++;
+        }
+    }
+
+    return total_selected;
+}
+
+void print_robot_state(Robot* robot){
+    printf("Robot ID: %d\n", robot->ID);
+    for (int i = 0; i < MAX_WAYPOINTS; i++) {
+        if (robot->waypoints[i] != 0)
+            printf("  - Waypoint: %d\n", robot->waypoints[i]);
+        if (robot->item_name[i] != NULL)
+            printf("  - Item: %s\n", robot->item_name[i]);
+        if (robot->positions[i] != NULL)
+            printf("  - Position: (%d, %d)\n", robot->positions[i][0], robot->positions[i][1]);
+        if (robot->quantities[i] != NULL)
+            printf("  - Quantity: %d\n", *robot->quantities[i]);
+    }
+}
+
+void convert_items_to_lists(Item_selected *selected_items, int num_items,char *chosen_item_names[MAX_ARTICLES_LISTE_ATTENTE],int *chosen_x_positions[MAX_ARTICLES_LISTE_ATTENTE],int *chosen_y_positions[MAX_ARTICLES_LISTE_ATTENTE],int *chosen_quantities[MAX_ARTICLES_LISTE_ATTENTE],int chosen_counts[MAX_ARTICLES_LISTE_ATTENTE]) {
+    for (int i = 0; i < num_items; i++) {
+        Item_selected item = selected_items[i];
+
+        // Copier le nom de l'article
+        chosen_item_names[i] = item.item_name;
+
+        // Allouer et copier les positions (x, y)
+        chosen_x_positions[i] = (int *)malloc(item.count * sizeof(int));
+        chosen_y_positions[i] = (int *)malloc(item.count * sizeof(int));
+        for (int j = 0; j < item.count; j++) {
+            chosen_x_positions[i][j] = item.positions[j][0] + 1; // x
+            chosen_y_positions[i][j] = item.positions[j][1] + 1; // y
+        }
+
+        // Allouer et copier les quantités
+        chosen_quantities[i] = (int *)malloc(item.count * sizeof(int));
+        for (int j = 0; j < item.count; j++) {
+            chosen_quantities[i][j] = item.quantities[j];
+        }
+
+        // Copier le count
+        chosen_counts[i] = item.count;
+    }
+    }
+
 
 // message format: "itemName1;N_X.Y,N_X.Y,.../itemName2;N_X.Y,..
 char *parse_stock(const char *request, int max_elements, int *L_n[max_elements], int *L_x[max_elements], int *L_y[max_elements], char *item_names[max_elements], int count[max_elements], int *nb_items_request){
@@ -313,3 +382,4 @@ char *create_inventory_string(int nb_items, int max_elements, int count[max_elem
     }
     return inventory_string;
 }
+
