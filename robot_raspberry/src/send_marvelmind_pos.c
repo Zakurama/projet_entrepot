@@ -256,7 +256,7 @@ int main(int argc, char *argv[])
             xm = ((double)position.x) ;
             ym = ((double)position.y) ;
 
-            if (position.ready)
+            if (position.ready && position.address == 11)
             {
                 if (position.highResolution)
                 {

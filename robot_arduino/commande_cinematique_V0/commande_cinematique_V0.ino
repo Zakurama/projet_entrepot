@@ -7,7 +7,7 @@
 #define MAX_WAYPOINTS 10  
 
 // Seuil de distance pour considérer qu'on a atteint le waypoint
-#define SEUIL 20.0 // Par exemple, 5 cm de seuil
+#define SEUIL 200.0 // Par exemple, 5 cm de seuil
 
 //-----------------------------------------------------------------//
 // Objects
