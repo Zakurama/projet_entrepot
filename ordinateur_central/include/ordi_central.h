@@ -18,10 +18,11 @@
 #include <semaphore.h>
 #include <sys/mman.h>
 
-#define SIZE_POS 10
+#define SIZE_POS 20
 #define NB_ROBOT 2
 #define NB_COLONNES 4
 #define NB_LIGNES 4
+#define NAME_ITEM_SIZE 10
 #define MAX_ARTICLES_PORTES 2
 #define MAX_ARTICLES_LISTE_ATTENTE 10
 #define MAX_ESPACE_STOCK 100
@@ -36,11 +37,14 @@ typedef struct {
 
 typedef struct {
     int ID;
+
+    char current_pos[SIZE_POS];
+
     int waypoints[MAX_WAYPOINTS];
     
-    char *item_name[MAX_WAYPOINTS];
-    int *positions[MAX_WAYPOINTS];
-    int *quantities[MAX_WAYPOINTS];
+    char item_name[MAX_WAYPOINTS][NAME_ITEM_SIZE];
+    int positions[MAX_WAYPOINTS][2];
+    int quantities[MAX_WAYPOINTS];
 
 } Robot;
 

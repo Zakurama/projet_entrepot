@@ -193,31 +193,35 @@ char* convert_request_strings_to_lists(char *buffer_reception_ID_articles, char 
     return NULL;
 }
 
-void update_shared_memory_stock(Robot *robot, Item_selected selected_item,int index_pos){
-    // Trouver le prochain indice disponible pour ajouter un nouvel article
+void update_shared_memory_stock(Robot *robot, Item_selected selected_item, int index_pos) {
+    // Vérifier si index_pos est valide
+    if (index_pos < 0 || index_pos >= selected_item.count) {
+        printf("Erreur : index_pos hors limites.\n");
+        return;
+    }
+
+    // Trouver le prochain indice disponible pour un nouvel élément
     int idx = 0;
-    while (robot->item_name[idx] != NULL && idx < MAX_WAYPOINTS) {
-        idx++; // Trouver la prochaine place vide
+    while (idx < MAX_WAYPOINTS && robot->item_name[idx][0] != '\0') {
+        idx++;
     }
-    
-    // Ajouter le nouvel Item_selected
-    if (idx < MAX_WAYPOINTS) {
-        // Ajouter le nom de l'article
-        robot->item_name[idx] = selected_item.item_name;
 
-        // Ajouter les positions (copier les coordonnées du stock)
-        robot->positions[idx] = (int *)malloc(2 * sizeof(int)); // Allouer de la mémoire pour [x, y]
-        if (robot->positions[idx] != NULL) {
-            robot->positions[idx][0] = selected_item.positions[index_pos][0] + 1; // x, +1 car premier bac (1,1) et non (0,0)
-            robot->positions[idx][1] = selected_item.positions[index_pos][1] + 1; // y
-        }
-
-        // Ajouter les quantités
-        robot->quantities[idx] = (int *)malloc(sizeof(int)); // Allouer de la mémoire pour la quantité
-        if (robot->quantities[idx] != NULL) {
-            robot->quantities[idx][0] = selected_item.quantities[index_pos];
-        }
+    // Vérifier s'il y a de la place pour ajouter un nouvel élément
+    if (idx == MAX_WAYPOINTS) {
+        printf("Erreur : Plus de place disponible dans la structure Robot.\n");
+        return;
     }
+
+    // Copier le nom de l'article (assurez-vous que la taille de robot->item_name[idx] est suffisante)
+    strncpy(robot->item_name[idx], selected_item.item_name, NAME_ITEM_SIZE - 1);
+    robot->item_name[idx][NAME_ITEM_SIZE - 1] = '\0';  // Assurez-vous que le nom est bien null-terminé
+
+    // Allouer et copier les positions
+    robot->positions[idx][0] = selected_item.positions[index_pos][0] + 1;
+    robot->positions[idx][1] = selected_item.positions[index_pos][1] + 1;
+
+    // Copier la quantité
+    robot->quantities[idx] = selected_item.quantities[index_pos];
 }
 
 int choose_items_stocks(char *item_names_requested[], int L_n_requested[], int count_requested,char *item_names_stock[], int *L_n_stock[], int *L_x_stock[], int *L_y_stock[], int count_stock[],Item_selected selected_items[]) {
@@ -270,15 +274,16 @@ int choose_items_stocks(char *item_names_requested[], int L_n_requested[], int c
 
 void print_robot_state(Robot* robot){
     printf("Robot ID: %d\n", robot->ID);
+    printf("Current position: %s\n",robot->current_pos);
     for (int i = 0; i < MAX_WAYPOINTS; i++) {
         if (robot->waypoints[i] != 0)
             printf("  - Waypoint: %d\n", robot->waypoints[i]);
-        if (robot->item_name[i] != NULL)
+        if (strcmp(robot->item_name[i],"\0"))
             printf("  - Item: %s\n", robot->item_name[i]);
-        if (robot->positions[i] != NULL)
+        if (robot->positions[i][0] != 0 && robot->positions[i][1] != 0)
             printf("  - Position: (%d, %d)\n", robot->positions[i][0], robot->positions[i][1]);
-        if (robot->quantities[i] != NULL)
-            printf("  - Quantity: %d\n", *robot->quantities[i]);
+        if (robot->quantities[i] != 0)
+            printf("  - Quantity: %d\n", robot->quantities[i]);
     }
 }
 

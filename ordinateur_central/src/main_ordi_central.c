@@ -14,6 +14,7 @@ char ip[IP_SIZE];
 void bye();
 void gestion_robot(int no);
 void gestionnaire_inventaire(int client_sd);
+void gestionnaire_traj_robot(int no);
 
 int shm[NB_ROBOT];
 size_t size_robot = sizeof(Robot);
@@ -80,14 +81,11 @@ int main(int argc, char *argv[]) {
             }
             if(i>0 && i<=NB_ROBOT){
                 // Processus de gestion des robots
-                printf("Robot %d\n",i-1);
                 gestion_robot(i-1);
             }
             else if(i>NB_ROBOT && i< nb_processus){
-                // Autres gestionnaires
-                // Pour l'instant rien
-                printf("Gestionnaire de traj de robot %d\n",i-NB_ROBOT-1);
-                while(1);
+                // Processus de gestion des trajecoires
+                gestionnaire_traj_robot(i-NB_ROBOT-1);
             }
 
         }
@@ -152,7 +150,7 @@ void gestionnaire_inventaire(int client_sd){
     if (error != NULL) {
         return;
     }
-    
+
     // On fait le choix des articles dans les stocks
     int nb_selected = choose_items_stocks(item_names_requested, L_n_requested, count_requested,item_names_stock, L_n_stock, L_x_stock, L_y_stock, count_stock,selected_items);
 
@@ -173,10 +171,6 @@ void gestionnaire_inventaire(int client_sd){
         }
     }
 
-    for(int i = 0;i<NB_ROBOT;i++){
-        print_robot_state(robots[i]);
-    }
-
     // Free allocated memory
     for (int i = 0; i < MAX_ARTICLES_LISTE_ATTENTE; i++) {
         free(item_names_requested[i]);
@@ -185,10 +179,67 @@ void gestionnaire_inventaire(int client_sd){
         free(L_y_stock[i]);
         free(item_names_stock[i]);
     }
+}
 
+void gestionnaire_traj_robot(int no){
+    char current_pos[SIZE_POS];
+    char pos_finale[SIZE_POS];
+
+    char path[MAX_WAYPOINTS][SIZE_POS];
+    // Initialisation des éléments du tableau
+    for (int i = 0; i < MAX_WAYPOINTS; i++) {
+        path[i][0] = '\0';  // Mettre une chaîne vide
+    }
+
+    while(1){
+        CHECK(sem_wait(sem_memoire_robot[no]),"sem_wait(sem_memoire_robot)");
+        int is_item_in_memory = strcmp(robots[no]->item_name[0],"\0");
+        CHECK(sem_post(sem_memoire_robot[no]),"sem_post(sem_memoire_robot)");
+        if(!is_item_in_memory){
+            // Il n'y a pas d'article à traiter pour l'instant. On attend un peu
+            sleep(2);
+            continue;
+        }
+        // Identification de la trajectoire
+        // On regarde on est ce qu'on est et ou on veut aller
+        CHECK(sem_wait(sem_memoire_robot[no]),"sem_wait(sem_memoire_robot)");
+        strcpy(current_pos,robots[no]->current_pos);
+        sprintf(pos_finale, "S%d%d", robots[no]->positions[0][0],robots[no]->positions[0][1]);
+        CHECK(sem_post(sem_memoire_robot[no]),"sem_post(sem_memoire_robot)");
+
+        // On détermine la trajectoire
+        trajectoire(current_pos, pos_finale, path);
+
+        // On boucle pour demander les mutex dans l'ordre
+        // TODO
+        // On met à jour au fur et a mesure la liste des WAIPOINTS du robot
+        // TODO
+
+        // On regarde si on est plein ou si il n'y a pas d'autre articles à aller chercher
+        // TODO
+
+        // Si non :  on détermine la trajectoire pour aller de la position de l'article au stock
+        // TODO
+
+        // On boucle pour demander les mutex dans l'ordre
+        // TODO
+        // On met à jour au fur et a mesure la liste des WAIPOINTS du robot
+        // TODO
+
+    }
 }
 
 void gestion_robot(int no){
+
+    // Determinaison de la postion de parking
+    char parking_spot[SIZE_POS];
+    sprintf(parking_spot, "P%d", (NB_COLONNES+1)*5 + no*(NB_COLONNES+1));
+
+    // Initialisation de la mémoire partagée
+    CHECK(sem_wait(sem_memoire_robot[no]),"sem_wait(sem_memoire_robot)");
+    robots[no]->ID = no;
+    strcpy(robots[no]->current_pos,parking_spot);
+    CHECK(sem_post(sem_memoire_robot[no]),"sem_post(sem_memoire_robot)");
     while(1);
     // int se;
     // init_tcp_socket(&se,ip,ports[no],1);
