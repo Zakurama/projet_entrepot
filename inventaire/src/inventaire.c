@@ -465,7 +465,7 @@ void *handle_client(void *arg) {
                 for (int i = 0; i < max_items; i++) {
                     free(item_names[i]);
                 }
-                
+                sleep(0.5); // issue WSL ?
                 send_message(computer_sd ,buff_emission);
 
 

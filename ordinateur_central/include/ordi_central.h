@@ -39,8 +39,9 @@ typedef struct {
     int ID;
 
     char current_pos[SIZE_POS];
+    int hold_items;
 
-    int waypoints[MAX_WAYPOINTS];
+    char waypoints[MAX_WAYPOINTS][SIZE_POS];
     
     char item_name[MAX_WAYPOINTS][NAME_ITEM_SIZE];
     int positions[MAX_WAYPOINTS][2];
@@ -57,4 +58,8 @@ char* convert_request_strings_to_lists(char *buffer_reception_ID_articles, char 
 void print_robot_state(Robot* robot);
 void convert_items_to_lists(Item_selected *selected_items, int num_items,char *chosen_item_names[MAX_ARTICLES_LISTE_ATTENTE],int *chosen_x_positions[MAX_ARTICLES_LISTE_ATTENTE],int *chosen_y_positions[MAX_ARTICLES_LISTE_ATTENTE],int *chosen_quantities[MAX_ARTICLES_LISTE_ATTENTE],int chosen_counts[MAX_ARTICLES_LISTE_ATTENTE]);
 char *create_inventory_string(int nb_items, int max_elements, int count[max_elements], int *L_n[max_elements], int *L_x[max_elements], int *L_y[max_elements], char *item_names[max_elements]);
+
+void remove_first_waypoint_of_robot(Robot *robot);
+int add_waypoint(Robot *robot, const char *waypoint);
+
 #endif

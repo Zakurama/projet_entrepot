@@ -276,14 +276,14 @@ void print_robot_state(Robot* robot){
     printf("Robot ID: %d\n", robot->ID);
     printf("Current position: %s\n",robot->current_pos);
     for (int i = 0; i < MAX_WAYPOINTS; i++) {
-        if (robot->waypoints[i] != 0)
-            printf("  - Waypoint: %d\n", robot->waypoints[i]);
         if (strcmp(robot->item_name[i],"\0"))
             printf("  - Item: %s\n", robot->item_name[i]);
         if (robot->positions[i][0] != 0 && robot->positions[i][1] != 0)
             printf("  - Position: (%d, %d)\n", robot->positions[i][0], robot->positions[i][1]);
         if (robot->quantities[i] != 0)
             printf("  - Quantity: %d\n", robot->quantities[i]);
+        if (strcmp(robot->waypoints[i],"\0"))
+            printf("  - Waypoint: %s\n", robot->waypoints[i]);
     }
 }
 
@@ -313,6 +313,37 @@ void convert_items_to_lists(Item_selected *selected_items, int num_items,char *c
     }
     }
 
+int add_waypoint(Robot *robot, const char *waypoint) {
+    int waypoint_count = 0;
+    
+    // Trouver le nombre actuel de waypoints
+    while (waypoint_count < MAX_WAYPOINTS && robot->waypoints[waypoint_count][0] != '\0') {
+        waypoint_count++;
+    }
+    
+    if (waypoint_count >= MAX_WAYPOINTS) {
+        printf("Max waypoints reached!\n");
+        return -1;
+    }
+    
+    strncpy(robot->waypoints[waypoint_count], waypoint, SIZE_POS - 1);
+    robot->waypoints[waypoint_count][SIZE_POS - 1] = '\0';
+    return 0;
+}
+
+void remove_first_waypoint_of_robot(Robot *robot) {
+    if (robot->waypoints[0][0] == '\0') {
+        printf("No waypoints to remove!\n");
+        return;
+    }
+    
+    for (int i = 0; i < MAX_WAYPOINTS - 1; i++) {
+        strncpy(robot->waypoints[i], robot->waypoints[i + 1], SIZE_POS);
+    }
+    
+    // Vider le dernier élément
+    robot->waypoints[MAX_WAYPOINTS - 1][0] = '\0';
+}
 
 // message format: "itemName1;N_X.Y,N_X.Y,.../itemName2;N_X.Y,..
 char *parse_stock(const char *request, int max_elements, int *L_n[max_elements], int *L_x[max_elements], int *L_y[max_elements], char *item_names[max_elements], int count[max_elements], int *nb_items_request){
