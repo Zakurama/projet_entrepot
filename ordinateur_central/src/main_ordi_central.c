@@ -9,6 +9,7 @@
 
 int ports[NB_ROBOT] = {8000,8001};
 
+
 char ip[IP_SIZE];
 
 void bye();
@@ -147,6 +148,33 @@ void gestionnaire_inventaire(int client_sd){
 
     // On récupère les demandes de l'inventaire
     recev_message(client_sd, buffer_reception_ID_articles); // la liste des articles (ID)
+
+    // à ce moment soit l'inventaire à transmit une commande de clients 
+    // soit il a transmit le nombre de lignes ou de colonnes de l'inventaire
+    
+    // On vérifie si l'inventaire a envoyé une commande de modification de la taille de l'inventaire
+    int new_size = 0;
+    char size_type[MAXOCTETS];
+    if (sscanf(buffer_reception_ID_articles, "%[^,],%d", size_type, &new_size) == 2) {
+        if (strcmp(size_type, "rows") == 0) {
+            // Modification du nombre de lignes
+            nb_lignes = new_size;
+        } else if (strcmp(size_type, "columns") == 0) {
+            // Modification du nombre de colonnes
+            nb_colonnes = new_size;
+        }
+        else {
+            strcpy(buffer_emission, "Invalid size type");
+            send_message(client_sd, buffer_emission);
+            return;
+        }
+        strcpy(buffer_emission, "Size updated successfully");
+        send_message(client_sd, buffer_emission);
+        return;
+    }
+
+    // L'inventaire à envoyé une requête de commande
+    // On récupère les positions des articles en stock
     recev_message(client_sd, buffer_reception_pos_articles); // la liste des positions
     char *error =  convert_request_strings_to_lists(buffer_reception_ID_articles, buffer_reception_pos_articles, item_names_requested, L_n_requested, L_n_stock, L_x_stock, L_y_stock, item_names_stock, &count_requested, count_stock,&nb_items);
     if (error != NULL) {

@@ -3,6 +3,9 @@
 #include "tcp.h"
 #include "inventaire.h"
 
+int nb_colonnes = DEFAULT_NB_COLONNES;
+int nb_lignes = DEFAULT_NB_LIGNES;
+
 void trajectoire(const char* pos_initiale, const char* pos_finale, char path[MAX_WAYPOINTS][SIZE_POS]){
 
     int pos_index = atoi(pos_initiale+1);
@@ -12,12 +15,12 @@ void trajectoire(const char* pos_initiale, const char* pos_finale, char path[MAX
     char type_pos_finale = pos_finale[0];
 
     // On vérifie que les positions données sont cohérentes
-    if(!(((type_pos=='S') && (pos_index%(NB_COLONNES + 1) != 0) && (pos_index % (2*(NB_COLONNES + 1))<(NB_COLONNES + 1)) ) || (type_pos!='S' && pos_index % (NB_COLONNES + 1) == 0))){
-        printf("La position initiale donnée est non cohérente. Si de type S : ne doit pas être mutliple de %d, sinon doit être mutliple de %d\nSi de type S, il faut aussi que pos_initiale_index mod %d<%d\n",NB_COLONNES + 1,NB_COLONNES + 1,2*(NB_COLONNES + 1),NB_COLONNES + 1);
+    if(!(((type_pos=='S') && (pos_index%(nb_colonnes + 1) != 0) && (pos_index % (2*(nb_colonnes + 1))<(nb_colonnes + 1)) ) || (type_pos!='S' && pos_index % (nb_colonnes + 1) == 0))){
+        printf("La position initiale donnée est non cohérente. Si de type S : ne doit pas être mutliple de %d, sinon doit être mutliple de %d\nSi de type S, il faut aussi que pos_initiale_index mod %d<%d\n",nb_colonnes + 1,nb_colonnes + 1,2*(nb_colonnes + 1),nb_colonnes + 1);
         exit(EXIT_FAILURE);
     }
-    if(!(((type_pos_finale=='S') && (pos_finale_index%(NB_COLONNES + 1) != 0) && (pos_finale_index % (2*(NB_COLONNES + 1))<(NB_COLONNES + 1)) ) || (type_pos_finale!='S' && pos_finale_index%(NB_COLONNES + 1) == 0))){
-        printf("La position finale donnée est non cohérente. Si de type S : ne doit pas être mutliple de %d, sinon doit être mutliple de %d\nSi de type S, il faut aussi que pos_finale_index mod %d<%d\n",NB_COLONNES + 1,NB_COLONNES + 1,2*(NB_COLONNES + 1),NB_COLONNES + 1);
+    if(!(((type_pos_finale=='S') && (pos_finale_index%(nb_colonnes + 1) != 0) && (pos_finale_index % (2*(nb_colonnes + 1))<(nb_colonnes + 1)) ) || (type_pos_finale!='S' && pos_finale_index%(nb_colonnes + 1) == 0))){
+        printf("La position finale donnée est non cohérente. Si de type S : ne doit pas être mutliple de %d, sinon doit être mutliple de %d\nSi de type S, il faut aussi que pos_finale_index mod %d<%d\n",nb_colonnes + 1,nb_colonnes + 1,2*(nb_colonnes + 1),nb_colonnes + 1);
         exit(EXIT_FAILURE);
     }            
     
@@ -52,13 +55,13 @@ void trajectoire(const char* pos_initiale, const char* pos_finale, char path[MAX
             if (type_pos == 'D'){
                 // On est sur la colone de descente
                 // On doit descendre sauf si on est sur la dernière place
-                if(pos_index == (NB_COLONNES+1)*(2*NB_LIGNES)){
+                if(pos_index == (nb_colonnes+1)*(2*nb_lignes)){
                     // On est sur la dernière place, on peut aller sur la colonne de montée
                     sprintf(holder_name_place, "M%d", pos_index);
                     strcpy(path[i], holder_name_place);
                 }
                 else{
-                    sprintf(holder_name_place, "D%d", pos_index + (NB_COLONNES + 1));
+                    sprintf(holder_name_place, "D%d", pos_index + (nb_colonnes + 1));
                     strcpy(path[i], holder_name_place);
                 }
 
@@ -67,14 +70,14 @@ void trajectoire(const char* pos_initiale, const char* pos_finale, char path[MAX
            else if (type_pos == 'M'){
                 // On est sur la colone de montée
                 // On peut monter
-                if(pos_index + NB_COLONNES > pos_finale_index){
-                    sprintf(holder_name_place, "M%d", pos_index-(NB_COLONNES + 1));
+                if(pos_index + nb_colonnes > pos_finale_index){
+                    sprintf(holder_name_place, "M%d", pos_index-(nb_colonnes + 1));
                     strcpy(path[i], holder_name_place);
                 }
             }
             else if (type_pos == 'S'){
                 // On va vers la gauche
-                if((pos_index)%(NB_COLONNES + 1)==0){
+                if((pos_index)%(nb_colonnes + 1)==0){
                     // On est arrivé en bout (début) des étagères
                     sprintf(holder_name_place, "M%d", pos_index);
                     strcpy(path[i], holder_name_place);
@@ -86,7 +89,7 @@ void trajectoire(const char* pos_initiale, const char* pos_finale, char path[MAX
             }
         }
                 
-        else if(pos_index +  NB_COLONNES >= pos_finale_index){
+        else if(pos_index +  nb_colonnes >= pos_finale_index){
             // Je suis a la bonne altitude (on est devant la bonne étagère de stocks)
             if(pos_index < pos_finale_index && ((type_pos=='M')||(type_pos=='S'))){
                 // On va vers la droite
@@ -106,8 +109,8 @@ void trajectoire(const char* pos_initiale, const char* pos_finale, char path[MAX
             if (type_pos == 'D'){
                 // On est sur la colone de descente 
                 // On peut descendre
-                if(pos_index + NB_COLONNES +1<= pos_finale_index){
-                    sprintf(holder_name_place, "D%d", pos_index+(NB_COLONNES + 1));
+                if(pos_index + nb_colonnes +1<= pos_finale_index){
+                    sprintf(holder_name_place, "D%d", pos_index+(nb_colonnes + 1));
                     strcpy(path[i], holder_name_place);
                 }
             }
@@ -115,20 +118,20 @@ void trajectoire(const char* pos_initiale, const char* pos_finale, char path[MAX
                 // On est sur la colone de montée
                 // On est sur la colone de descente
                 // On doit monter sauf si on est sur la première place
-                if(pos_index ==(NB_COLONNES + 1)){
+                if(pos_index ==(nb_colonnes + 1)){
                     // On est sur la première place, on peut aller sur la colonne de descente
                     sprintf(holder_name_place, "D%d", pos_index);
                     strcpy(path[i], holder_name_place);
                 }
                 else{
-                    sprintf(holder_name_place, "M%d", pos_index - (NB_COLONNES + 1));
+                    sprintf(holder_name_place, "M%d", pos_index - (nb_colonnes + 1));
                     strcpy(path[i], holder_name_place);
                 }
 
             }
             else if (type_pos == 'S'){
                 // On va vers la gauche
-                if((pos_index)%(NB_COLONNES + 1)==0){
+                if((pos_index)%(nb_colonnes + 1)==0){
                     // On est arrivé en bout (début) des étagères
                     sprintf(holder_name_place, "M%d", pos_index);
                     strcpy(path[i], holder_name_place);
@@ -382,4 +385,3 @@ char *create_inventory_string(int nb_items, int max_elements, int count[max_elem
     }
     return inventory_string;
 }
-
