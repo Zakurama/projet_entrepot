@@ -25,7 +25,7 @@
 #define MAX_ARTICLES_PORTES 2
 #define MAX_ARTICLES_LISTE_ATTENTE 10
 #define MAX_ESPACE_STOCK 100
-#define MAX_WAYPOINTS 10044
+#define MAX_WAYPOINTS 100
 
 extern int nb_colonnes;
 extern int nb_lignes;
