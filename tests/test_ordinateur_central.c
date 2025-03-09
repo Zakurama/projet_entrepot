@@ -483,6 +483,65 @@ void test_create_inventory_string_single_item(void) {
 
 }
 
+void test_authorize_robot_connexion_authorized(void) {
+    char *file_name = "robots.csv";
+    char *robot_ip = "192.168.1.1";
+
+    // Create a temporary CSV file for testing
+    FILE *file = fopen(file_name, "w");
+    fprintf(file, "robot_ip,robot_id\n192.168.1.1,1001\n192.168.1.2,1002\n");
+    fclose(file);
+
+    int robot_id = authorize_robot_connexion(file_name, robot_ip);
+
+    CU_ASSERT_EQUAL(robot_id, 1001);
+
+    // Remove the temporary file
+    remove(file_name);
+}
+
+void test_authorize_robot_connexion_not_authorized(void) {
+    char *file_name = "robots.csv";
+    char *robot_ip = "192.168.1.3";
+
+    // Create a temporary CSV file for testing
+    FILE *file = fopen(file_name, "w");
+    fprintf(file, "robot_ip,robot_id\n192.168.1.1,1001\n192.168.1.2,1002\n");
+    fclose(file);
+
+    int robot_id = authorize_robot_connexion(file_name, robot_ip);
+
+    CU_ASSERT_EQUAL(robot_id, 0);
+
+    // Remove the temporary file
+    remove(file_name);
+}
+
+void test_authorize_robot_connexion_invalid_file(void) {
+    char *file_name = "invalid.csv";
+    char *robot_ip = "192.168.1.1";
+
+    int robot_id = authorize_robot_connexion(file_name, robot_ip);
+
+    CU_ASSERT_EQUAL(robot_id, -1);
+}
+
+void test_authorize_robot_connexion_empty_file(void) {
+    char *file_name = "empty.csv";
+    char *robot_ip = "192.168.1.1";
+
+    // Create an empty CSV file for testing
+    FILE *file = fopen(file_name, "w");
+    fclose(file);
+
+    int robot_id = authorize_robot_connexion(file_name, robot_ip);
+
+    CU_ASSERT_EQUAL(robot_id, 0);
+
+    // Remove the temporary file
+    remove(file_name);
+}
+
 int main() {
     CU_initialize_registry();
 
@@ -550,6 +609,41 @@ int main() {
     }
 
     if (NULL == CU_add_test(suite, "test select item in stocks", test_selection_items)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
+    if (NULL == CU_add_test(suite, "test create inventory string", test_create_inventory_string)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
+    if (NULL == CU_add_test(suite, "test create inventory string empty", test_create_inventory_string_empty)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
+    if (NULL == CU_add_test(suite, "test create inventory string single item", test_create_inventory_string_single_item)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
+    if (NULL == CU_add_test(suite, "test authorize robot connexion authorized", test_authorize_robot_connexion_authorized)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
+    if (NULL == CU_add_test(suite, "test authorize robot connexion not authorized", test_authorize_robot_connexion_not_authorized)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
+    if (NULL == CU_add_test(suite, "test authorize robot connexion invalid file", test_authorize_robot_connexion_invalid_file)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
+    if (NULL == CU_add_test(suite, "test authorize robot connexion empty file", test_authorize_robot_connexion_empty_file)) {
         CU_cleanup_registry();
         return CU_get_error();
     }

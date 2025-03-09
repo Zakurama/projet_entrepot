@@ -388,3 +388,30 @@ char *create_inventory_string(int nb_items, int max_elements, int count[max_elem
     }
     return inventory_string;
 }
+
+/*
+* Look into a csv file to find wether the robot with robot_ip is authorized to connect
+* Return the robot ID if the robot is authorized, 0 if not found, and -1 if the file cannot be opened
+*/
+int authorize_robot_connexion(char *file_name, char *robot_ip){
+    
+    FILE *file = fopen(file_name, "r");
+    if (file == NULL){
+        return -1;
+    }
+
+    char line[MAXOCTETS];
+    while (fgets(line, sizeof(line), file)){
+        char *ip = strtok(line, ",");
+        char *id = strtok(NULL, ",");
+        if (ip == NULL || id == NULL){
+            continue;
+        }
+        if (strcmp(ip, robot_ip) == 0){
+            fclose(file);
+            return atoi(id);
+        }
+    }
+    fclose(file);
+    return 0;
+}

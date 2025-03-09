@@ -211,15 +211,21 @@ void gestionnaire_inventaire(int client_sd){
 void gestion_flotte(void){
     int se;
     init_tcp_socket(&se,LOCAL_IP,PORT_ROBOT,1);
-    char buff_reception[MAXOCTETS + 1];
-    int client_sd;
     listen(se, MAXCLIENTS);
-    int no = 0; // Le numéro du robot
+
     while (1){
-        client_sd = accept_client(se);
-        recev_message(client_sd,buff_reception);
-        // Traitement sur buff_reception pour savoir si le robot a le droit de se connecter
-        // TODO
+        struct sockaddr_in adrclient;
+        socklen_t adrclient_len = sizeof(adrclient);
+        int client_sd = accept(se, (struct sockaddr *)&adrclient, &adrclient_len);
+        CHECK_ERROR(client_sd, -1, "Erreur de accept !!!\n");
+
+        int robot_id = authorize_robot_connexion("robots.csv", inet_ntoa(adrclient.sin_addr));
+        CHECK_ERROR(robot_id, -1, "Erreur d'autorisation de connexion !!!\n");
+        if (robot_id == 0) {
+            close_socket(&client_sd);
+            continue;
+        }
+        printf("Robot %d connected\n", robot_id);
 
         // Le robot a le droit de se connecter, on crée donc ses gestionnaires
         pid_t pid[2];
@@ -228,16 +234,14 @@ void gestion_flotte(void){
             if (pid[i]==0){
                 if(i==0){
                     // Gestionnaire de communication avec le robot
-                    gestion_communication_robot(no,client_sd);
+                    gestion_communication_robot(robot_id, client_sd);
                 }
                 if(i==1){
                     // Processus de gestion de trajectoire du robot
-                    gestionnaire_traj_robot(no);
+                    gestionnaire_traj_robot(robot_id);
                 }
             }
         }
-        no++;
-
     }
 }
 
