@@ -22,6 +22,8 @@ Robot* robots[NB_ROBOT];
 
 sem_t* sem_memoire_robot[NB_ROBOT];
 
+sem_t* mutex_ecran;
+
 int main(int argc, char *argv[]) {
     
     int nb_processus = 1+2*NB_ROBOT;
@@ -51,6 +53,9 @@ int main(int argc, char *argv[]) {
         CHECK_S(sem_memoire_robot[i] = sem_open(mutex_name,O_CREAT|O_EXCL,0666,1),"sem_open(sem_memoire_robot)");        
 
     }
+
+    // gestion de la mutex pour l'accès a l'écran
+    CHECK_S(mutex_ecran = sem_open("mutex_ecran",O_CREAT|O_EXCL,0666,1),"sem_open(mutex_ecran)"); 
 
     // Permet de faire le cleanning des sémaphores lors des exits
     atexit(bye);// bye detruit les semaphores
@@ -114,6 +119,9 @@ void bye(){
         CHECK(sem_close(sem_memoire_robot[i]),"sem_close(sem_memoire_robot)");
         CHECK(sem_unlink(mutex_name),"sem_unlink(sem_memoire_robot)");
     }
+
+    CHECK(sem_close(mutex_ecran),"sem_close(mutex_ecran)");
+    CHECK(sem_unlink("mutex_ecran"),"sem_unlink(mutex_ecran)");
 }
 
 void gestionnaire_inventaire(int client_sd){
@@ -214,16 +222,6 @@ void gestionnaire_traj_robot(int no){
             // On détermine la trajectoire
             trajectoire(current_pos, pos_finale, path1);
 
-            printf("AFFICHAGE De le trajectoire du robot %d de %s à %s\n",no,current_pos,pos_finale);
-            for(int i =0;i<MAX_WAYPOINTS;i++){
-                if(!strcmp(path1[i],"\0")){
-                    break;
-                }
-                printf(" %s ",path1[i]);
-            }
-            printf("\n");
-            printf("FIN DE L'AFFICHAGE De le trajectoire du robot %d\n",no);
-
             // On boucle pour demander les mutex dans l'ordre
             for (int i = 0; i < MAX_WAYPOINTS; i++) {
                 if (path1[i][0] == '\0') {
@@ -282,16 +280,6 @@ void gestionnaire_traj_robot(int no){
         // On détermine la trajectoire
         trajectoire(current_pos, pos_finale, path2);
 
-        printf("AFFICHAGE De le trajectoire du robot %d de %s à %s\n",no,current_pos,pos_finale);
-            for(int i =0;i<MAX_WAYPOINTS;i++){
-                if(!strcmp(path2[i],"\0")){
-                    break;
-                }
-                printf(" %s ",path2[i]);
-            }
-            printf("\n");
-            printf("FIN DE L'AFFICHAGE De le trajectoire du robot %d\n",no);
-
         // On boucle pour demander les mutex dans l'ordre
         for (int i = 0; i < MAX_WAYPOINTS; i++) {
             if (path2[i][0] == '\0') {
@@ -325,16 +313,6 @@ void gestionnaire_traj_robot(int no){
 
         // On détermine la trajectoire
         trajectoire(current_pos, pos_finale, path3);
-
-        printf("AFFICHAGE De le trajectoire du robot %d de %s à %s\n",no,current_pos,pos_finale);
-            for(int i =0;i<MAX_WAYPOINTS;i++){
-                if(!strcmp(path3[i],"\0")){
-                    break;
-                }
-                printf(" %s ",path3[i]);
-            }
-            printf("\n");
-        printf("FIN DE L'AFFICHAGE De le trajectoire du robot %d\n",no);
 
         // On boucle pour demander les mutex dans l'ordre
         for (int i = 0; i < MAX_WAYPOINTS; i++) {
@@ -397,16 +375,18 @@ void gestion_robot(int no){
         }
         CHECK(sem_post(sem_memoire_robot[no]),"sem_post(sem_memoire_robot)");
 
-        // TESTS : On affiche les waypoints extrait de la mémoire partagée
-        // printf("AFFICHAGE DES WAYPOINTS du robot %d\n",no);
-        // for(int i =0;i<MAX_WAYPOINTS;i++){
-        //     if(!strcmp(waypoints[i],"\0")){
-        //         break;
-        //     }
-        //     printf(" %s ",waypoints[i]);
-        // }
-        // printf("\n");
-        // printf("FIN DE L'AFFICHAGE DES WAYPOINTS du robot %d\n",no);
+        //TESTS : On affiche les waypoints extrait de la mémoire partagée
+        CHECK(sem_wait(mutex_ecran),"sem_wait(mutex_ecran)");
+        printf("AFFICHAGE DES WAYPOINTS du robot %d\n",no);
+        for(int i =0;i<MAX_WAYPOINTS;i++){
+            if(!strcmp(waypoints[i],"\0")){
+                break;
+            }
+            printf(" %s ",waypoints[i]);
+        }
+        printf("\n");
+        printf("FIN DE L'AFFICHAGE DES WAYPOINTS du robot %d\n",no);
+        CHECK(sem_post(mutex_ecran),"sem_post(mutex_ecran)");
 
         // On envoie les waypoints au robot
         // TODO
