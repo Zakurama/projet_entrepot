@@ -22,6 +22,13 @@ Robot* robots[NB_ROBOT];
 
 sem_t* sem_memoire_robot[NB_ROBOT];
 
+// Mutex pour l'entrepôt
+sem_t* sem_bac[NB_BAC];
+sem_t* sem_parking[NB_ROBOT];
+sem_t* sem_lignes[NB_LIGNES];
+sem_t* sem_colonneNord[2*NB_LIGNES];
+sem_t* sem_colonneSud[2*NB_LIGNES];
+
 sem_t* mutex_ecran;
 
 int main(int argc, char *argv[]) {
@@ -39,23 +46,59 @@ int main(int argc, char *argv[]) {
 
     pid_t pid[nb_processus];
 
-    char nom_memoire[20];
+    ////// Definition des mutex et des sémaphore nommées
+
+    // ROBOTS
+    char memory_robot_name[20];
     char mutex_name[30];
     for(int i = 0;i<NB_ROBOT;i++){
         // Gestion des mémoires partagées
-        sprintf(nom_memoire, "robots_data[%d]", i);
-        CHECK(shm[i] = shm_open(nom_memoire, O_CREAT | O_RDWR, 0666),"shm_open(robots_data)");
+        sprintf(memory_robot_name, "robots_data[%d]", i);
+        CHECK(shm[i] = shm_open(memory_robot_name, O_CREAT | O_RDWR, 0666),"shm_open(robots_data)");
         CHECK(ftruncate(shm[i], size_robot),"ftruncate(shm)");
         CHECK_MAP(robots[i] = mmap(0, size_robot, PROT_READ | PROT_WRITE, MAP_SHARED, shm[i], 0),"mmap");
 
         // Gestion des mutex pour l'acces memoire
         sprintf(mutex_name, "sem_memoire_robot[%d]", i);
-        CHECK_S(sem_memoire_robot[i] = sem_open(mutex_name,O_CREAT|O_EXCL,0666,1),"sem_open(sem_memoire_robot)");        
-
+        CHECK_S(sem_memoire_robot[i] = sem_open(mutex_name,O_CREAT|O_EXCL,0666,1),"sem_open(sem_memoire_robot)");
+        
     }
 
-    // gestion de la mutex pour l'accès a l'écran
+    // BACS
+    char bac_name[30];
+    for(int i = 0;i<NB_BAC;i++){
+        sprintf(bac_name, "sem_bac[%d]", i);
+        CHECK_S(sem_bac[i] = sem_open(bac_name,O_CREAT|O_EXCL,0666,1),"sem_open(sem_bac)");        
+    }
+
+    // PARKING
+    char parking_name[30];
+    for(int i = 0;i<NB_ROBOT;i++){
+        sprintf(parking_name, "sem_parking[%d]", i);
+        CHECK_S(sem_parking[i] = sem_open(parking_name,O_CREAT|O_EXCL,0666,1),"sem_open(parking_name)");        
+    }
+
+    // LIGNES
+    char line_name[30];
+    for(int i = 0;i<NB_LIGNES;i++){
+        sprintf(line_name, "sem_lignes[%d]", i);
+        CHECK_S(sem_lignes[i] = sem_open(line_name,O_CREAT|O_EXCL,0666,1),"sem_open(line_name)");        
+    }
+
+    // COLONNES
+    char colonne_nord_name[30];
+    char colonne_sud_name[30];
+    for(int i = 0;i<2*NB_LIGNES;i++){
+        sprintf(colonne_nord_name, "sem_colonneNord[%d]", i);
+        CHECK_S(sem_colonneNord[i] = sem_open(colonne_nord_name,O_CREAT|O_EXCL,0666,1),"sem_open(colonne_nord_name)"); 
+        sprintf(colonne_sud_name, "sem_colonneSud[%d]", i);
+        CHECK_S(sem_colonneSud[i] = sem_open(colonne_sud_name,O_CREAT|O_EXCL,0666,1),"sem_open(colonne_sud_name)");        
+    }
+
+    // ECRAN
     CHECK_S(mutex_ecran = sem_open("mutex_ecran",O_CREAT|O_EXCL,0666,1),"sem_open(mutex_ecran)"); 
+
+    ////// FIN definition des mutex et des sémaphore nommées
 
     // Permet de faire le cleanning des sémaphores lors des exits
     atexit(bye);// bye detruit les semaphores
@@ -105,6 +148,10 @@ int main(int argc, char *argv[]) {
 }
 
 void bye(){
+
+    // Suppression des mutex et des mémoires partagées
+
+    // ROBOT
     char nom_memoire[20];
     char mutex_name[30];
     for(int i = 0;i<NB_ROBOT;i++){
@@ -120,8 +167,46 @@ void bye(){
         CHECK(sem_unlink(mutex_name),"sem_unlink(sem_memoire_robot)");
     }
 
+    // ECRAN
     CHECK(sem_close(mutex_ecran),"sem_close(mutex_ecran)");
     CHECK(sem_unlink("mutex_ecran"),"sem_unlink(mutex_ecran)");
+
+    // BAC
+    char bac_name[30];
+    for(int i = 0;i<NB_BAC;i++){
+        sprintf(bac_name, "sem_bac[%d]", i);
+        CHECK(sem_close(sem_bac[i]),"sem_close(bac_name)");
+        CHECK(sem_unlink(bac_name),"sem_unlink(bac_name)");
+    }
+
+    // PARKING
+    char parking_name[30];
+    for(int i = 0;i<NB_ROBOT;i++){
+        sprintf(parking_name, "sem_parking[%d]", i);
+        CHECK(sem_close(sem_parking[i]),"sem_close(sem_parking)");
+        CHECK(sem_unlink(parking_name),"sem_unlink(parking_name)");
+    }
+
+    // LIGNES
+    char line_name[30];
+    for(int i = 0;i<NB_LIGNES;i++){
+        sprintf(line_name, "sem_lignes[%d]", i);
+        CHECK(sem_close(sem_lignes[i]),"sem_close(sem_lignes)");
+        CHECK(sem_unlink(line_name),"sem_unlink(line_name)");
+    }
+
+    // COLONNES
+    char colonne_nord_name[30];
+    char colonne_sud_name[30];
+    for(int i = 0;i<2*NB_LIGNES;i++){
+        sprintf(colonne_nord_name, "sem_colonneNord[%d]", i);
+        sprintf(colonne_sud_name, "sem_colonneSud[%d]", i);
+        CHECK(sem_close(sem_colonneNord[i]),"sem_close(sem_colonneNord)");
+        CHECK(sem_unlink(colonne_nord_name),"sem_unlink(colonne_nord_name)");
+        CHECK(sem_close(sem_colonneSud[i]),"sem_close(sem_colonneSud)");
+        CHECK(sem_unlink(colonne_sud_name),"sem_unlink(colonne_sud_name)");
+    }
+
 }
 
 void gestionnaire_inventaire(int client_sd){

@@ -22,6 +22,7 @@
 #define NB_ROBOT 2
 #define NB_COLONNES 4
 #define NB_LIGNES 4
+#define NB_BAC 2
 #define NAME_ITEM_SIZE 10
 #define MAX_ARTICLES_PORTES 2
 #define MAX_ARTICLES_LISTE_ATTENTE 10
