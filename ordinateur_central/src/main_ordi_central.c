@@ -185,65 +185,139 @@ void gestionnaire_inventaire(int client_sd){
 void gestionnaire_traj_robot(int no){
     char current_pos[SIZE_POS];
     char pos_finale[SIZE_POS];
-
-    char path[MAX_WAYPOINTS][SIZE_POS];
-    // Initialisation des éléments du tableau
-    for (int i = 0; i < MAX_WAYPOINTS; i++) {
-        path[i][0] = '\0';  // Mettre une chaîne vide
-    }
-
+    
     while(1){
+
+        char path1[MAX_WAYPOINTS][SIZE_POS];
+
         CHECK(sem_wait(sem_memoire_robot[no]),"sem_wait(sem_memoire_robot)");
         int is_item_in_memory = strcmp(robots[no]->item_name[0],"\0");
         CHECK(sem_post(sem_memoire_robot[no]),"sem_post(sem_memoire_robot)");
+        
         if(!is_item_in_memory){
-            // Il n'y a pas d'article à traiter pour l'instant. On attend un peu
+            // Il n'y a pas d'article à traiter pour l'instant. 
+            // On attend un peu
             sleep(2);
             continue;
         }
-        // Identification de la trajectoire
-        // On regarde on est ce qu'on est et ou on veut aller
+
+        // Le robot doit aller chercher l'article
         CHECK(sem_wait(sem_memoire_robot[no]),"sem_wait(sem_memoire_robot)");
         strcpy(current_pos,robots[no]->current_pos);
-        sprintf(pos_finale, "S%d%d", robots[no]->positions[0][0],robots[no]->positions[0][1]);
+        sprintf(pos_finale, "S%d%d",robots[no]->positions[0][0],robots[no]->positions[0][1]);
         CHECK(sem_post(sem_memoire_robot[no]),"sem_post(sem_memoire_robot)");
         
         // On détermine la trajectoire
-        trajectoire(current_pos, pos_finale, path);
+        trajectoire(current_pos, pos_finale, path1);
 
         // On boucle pour demander les mutex dans l'ordre
         for (int i = 0; i < MAX_WAYPOINTS; i++) {
-            if (path[i][0] == '\0') {
+            if (path1[i][0] == '\0') {
                 break;
             }
             // On se met sur la file d'attente
             // Tant que ce n'est pas mon tour j'attend
+            // TODO
 
             // C'est mon tour, je demande la mutex
             // TODO
             // On met à jour au fur et a mesure la liste des WAIPOINTS du robot
             CHECK(sem_wait(sem_memoire_robot[no]),"sem_wait(sem_memoire_robot)");
-            add_waypoint(robots[no], path[i]);
+            add_waypoint(robots[no], path1[i]);
             // On met a jour la position du robot
-            strcpy(robots[no]->current_pos,path[i]);
+            strcpy(robots[no]->current_pos,path1[i]);
+            CHECK(sem_post(sem_memoire_robot[no]),"sem_post(sem_memoire_robot)");
+        }
+        
+        // On regarde combien d'articles on peut porter
+        CHECK(sem_wait(sem_memoire_robot[no]),"sem_wait(sem_memoire_robot)");
+        if(robots[no]->quantities[0] + robots[no]->hold_items > MAX_ARTICLES_PORTES){
+            // On ne peut pas porter tout d'un coup
+            // On met juste a jour la liste des quantités
+            robots[no]->quantities[0] = robots[no]->quantities[0] - (MAX_ARTICLES_PORTES - robots[no]->hold_items);
+            robots[no]->hold_items = MAX_ARTICLES_PORTES;
+        }
+        else{
+            // On peut porter tout d'un coup
+            robots[no]->hold_items = robots[no]->hold_items + robots[no]->hold_items;
+            // On peut supprimer l'article de la liste
+            remove_first_item_of_robot(robots[no]);
+        }
+        CHECK(sem_post(sem_memoire_robot[no]),"sem_post(sem_memoire_robot)");
+
+
+        CHECK(sem_wait(sem_memoire_robot[no]),"sem_wait(sem_memoire_robot)");
+        is_item_in_memory = strcmp(robots[no]->item_name[0],"\0");
+        int nb_item_hold = robots[no]->hold_items;
+        CHECK(sem_post(sem_memoire_robot[no]),"sem_post(sem_memoire_robot)");
+        
+        if(!(!is_item_in_memory || nb_item_hold == MAX_ARTICLES_PORTES)){
+            // il y a encore des articles a tratier avant d'aller au bac
+            continue;
+        }
+
+        // On doit aller au bac
+        char path2[MAX_WAYPOINTS][SIZE_POS];
+        CHECK(sem_wait(sem_memoire_robot[no]),"sem_wait(sem_memoire_robot)");
+        strcpy(current_pos,robots[no]->current_pos);
+        sprintf(pos_finale, "B%d",(NB_COLONNES+1)*(no+1));
+        CHECK(sem_post(sem_memoire_robot[no]),"sem_post(sem_memoire_robot)");
+
+        // On détermine la trajectoire
+        trajectoire(current_pos, pos_finale, path2);
+
+        // On boucle pour demander les mutex dans l'ordre
+        for (int i = 0; i < MAX_WAYPOINTS; i++) {
+            if (path2[i][0] == '\0') {
+                break;
+            }
+            // On se met sur la file d'attente
+            // Tant que ce n'est pas mon tour j'attend
+            // TODO
+ 
+            // C'est mon tour, je demande la mutex
+            // TODO
+            // On met à jour au fur et a mesure la liste des WAIPOINTS du robot
+            CHECK(sem_wait(sem_memoire_robot[no]),"sem_wait(sem_memoire_robot)");
+            add_waypoint(robots[no], path2[i]);
+            // On met a jour la position du robot
+            strcpy(robots[no]->current_pos,path2[i]);
             CHECK(sem_post(sem_memoire_robot[no]),"sem_post(sem_memoire_robot)");
         }
 
-        // On regarde combien d'articles on peut porter
+        // On vide dans le bac
+        CHECK(sem_wait(sem_memoire_robot[no]),"sem_wait(sem_memoire_robot)");
+        robots[no]->hold_items = 0;
+        CHECK(sem_post(sem_memoire_robot[no]),"sem_post(sem_memoire_robot)");
 
-        while(1);
+        // On retourne au parking
+        char path3[MAX_WAYPOINTS][SIZE_POS];
+        CHECK(sem_wait(sem_memoire_robot[no]),"sem_wait(sem_memoire_robot)");
+        strcpy(current_pos,robots[no]->current_pos);
+        sprintf(pos_finale, "P%d",(NB_COLONNES+1)*5 + no*(NB_COLONNES+1));
+        CHECK(sem_post(sem_memoire_robot[no]),"sem_post(sem_memoire_robot)");
 
-        // On regarde si on est plein ou si il n'y a pas d'autre articles à aller chercher
-        // TODO
-
-        // Si non :  on détermine la trajectoire pour aller de la position de l'article au stock
-        // TODO
+        // On détermine la trajectoire
+        trajectoire(current_pos, pos_finale, path3);
 
         // On boucle pour demander les mutex dans l'ordre
-        // TODO
-        // On met à jour au fur et a mesure la liste des WAIPOINTS du robot
-        // TODO
-
+        for (int i = 0; i < MAX_WAYPOINTS; i++) {
+            if (path3[i][0] == '\0') {
+                break;
+            }
+            // On se met sur la file d'attente
+            // Tant que ce n'est pas mon tour j'attend
+            // TODO
+ 
+            // C'est mon tour, je demande la mutex
+            // TODO
+            // On met à jour au fur et a mesure la liste des WAIPOINTS du robot
+            CHECK(sem_wait(sem_memoire_robot[no]),"sem_wait(sem_memoire_robot)");
+            add_waypoint(robots[no], path3[i]);
+            // On met a jour la position du robot
+            strcpy(robots[no]->current_pos,path3[i]);
+            CHECK(sem_post(sem_memoire_robot[no]),"sem_post(sem_memoire_robot)");
+        }
     }
 }
 
@@ -303,7 +377,6 @@ void gestion_robot(int no){
         }
         printf("\n");
         printf("FIN DE L'AFFICHAGE DES WAYPOINTS\n");
-        while(1);
 
         // On envoie les waypoints au robot
         // TODO

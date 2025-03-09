@@ -345,6 +345,26 @@ void remove_first_waypoint_of_robot(Robot *robot) {
     robot->waypoints[MAX_WAYPOINTS - 1][0] = '\0';
 }
 
+void remove_first_item_of_robot(Robot *robot) {
+    if (robot->item_name[0][0] == '\0') {
+        printf("No item to remove!\n");
+        return;
+    }
+    
+    for (int i = 0; i < MAX_WAYPOINTS - 1; i++) {
+        strncpy(robot->item_name[i], robot->item_name[i + 1], NAME_ITEM_SIZE);
+        robot->positions[i][0] = robot->positions[i + 1][0];
+        robot->positions[i][1] = robot->positions[i + 1][1];
+        robot->quantities[i] = robot->quantities[i + 1];
+    }
+    
+    // Vider le dernier élément
+    robot->item_name[MAX_WAYPOINTS - 1][0] = '\0';
+    robot->positions[MAX_WAYPOINTS - 1][0] = 0;
+    robot->positions[MAX_WAYPOINTS - 1][1] = 0;
+    robot->quantities[MAX_WAYPOINTS - 1] = 0;
+}
+
 // message format: "itemName1;N_X.Y,N_X.Y,.../itemName2;N_X.Y,..
 char *parse_stock(const char *request, int max_elements, int *L_n[max_elements], int *L_x[max_elements], int *L_y[max_elements], char *item_names[max_elements], int count[max_elements], int *nb_items_request){
     char temp[strlen(request) + 1];

@@ -26,7 +26,7 @@
 #define MAX_ARTICLES_PORTES 2
 #define MAX_ARTICLES_LISTE_ATTENTE 10
 #define MAX_ESPACE_STOCK 100
-#define MAX_WAYPOINTS 100
+#define MAX_WAYPOINTS 1000
 
 typedef struct {
     char *item_name;
@@ -61,5 +61,5 @@ char *create_inventory_string(int nb_items, int max_elements, int count[max_elem
 
 void remove_first_waypoint_of_robot(Robot *robot);
 int add_waypoint(Robot *robot, const char *waypoint);
-
+void remove_first_item_of_robot(Robot *robot);
 #endif
