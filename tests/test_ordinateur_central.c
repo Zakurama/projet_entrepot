@@ -16,7 +16,9 @@ void test_trajectoire_generique(const char *pos_initiale, const char *pos_finale
         path[i][0] = '\0';  // Mettre une chaîne vide
     }
 
-    trajectoire(pos_initiale, pos_finale, path);
+    int nb_colonnes = 4;
+    int nb_lignes = 4;
+    trajectoire(pos_initiale, pos_finale, path, nb_lignes, nb_colonnes);
 
     for (int i = 0; i < MAX_WAYPOINTS; i++) {
         if (expected[i][0] == '\0' && path[i][0] == '\0') {

@@ -6,25 +6,28 @@
 #define DEFAULT_LOCALIP "127.0.0.1"
 #define LOCAL_IP "127.0.0.1"
 #define LOCAL_PORT 5000
-
-int ports[NB_ROBOT] = {8000,8001};
-
+#define PORT_ROBOT 8000
 
 char ip[IP_SIZE];
 
 void bye();
-void gestion_robot(int no);
+
 void gestionnaire_inventaire(int client_sd);
+void gestion_flotte(void);
 
-int shm[NB_ROBOT];
+void gestion_communication_robot(int no,int se);
+void gestionnaire_traj_robot(int no);
+
+int *nb_colonnes;
+int *nb_lignes;
+
+int shm[NB_MAX_ROBOT];
 size_t size_robot = sizeof(Robot);
-Robot* robots[NB_ROBOT];
+Robot* robots[NB_MAX_ROBOT];
 
-sem_t* sem_memoire_robot[NB_ROBOT];
+sem_t* sem_memoire_robot[NB_MAX_ROBOT];
 
 int main(int argc, char *argv[]) {
-    
-    int nb_processus = 1+2*NB_ROBOT;
 
     if(argc == 2){
         strncpy(ip, argv[1], IP_SIZE - 1);
@@ -35,11 +38,25 @@ int main(int argc, char *argv[]) {
         ip[IP_SIZE - 1] = '\0';
     }
 
-    pid_t pid[nb_processus];
+    // Create shared memory for nb_colonnes and nb_lignes
+    int shm_colonnes, shm_lignes;
+    size_t size_int = sizeof(int);
+
+    CHECK(shm_colonnes = shm_open("nb_colonnes", O_CREAT | O_RDWR, 0666), "shm_open(nb_colonnes)");
+    CHECK(ftruncate(shm_colonnes, size_int), "ftruncate(shm_colonnes)");
+    CHECK_MAP(nb_colonnes = mmap(0, size_int, PROT_READ | PROT_WRITE, MAP_SHARED, shm_colonnes, 0), "mmap(nb_colonnes)");
+
+    CHECK(shm_lignes = shm_open("nb_lignes", O_CREAT | O_RDWR, 0666), "shm_open(nb_lignes)");
+    CHECK(ftruncate(shm_lignes, size_int), "ftruncate(shm_lignes)");
+    CHECK_MAP(nb_lignes = mmap(0, size_int, PROT_READ | PROT_WRITE, MAP_SHARED, shm_lignes, 0), "mmap(nb_lignes)");
+
+    // Initialize shared memory values
+    *nb_colonnes = DEFAULT_NB_COLONNES;
+    *nb_lignes = DEFAULT_NB_LIGNES;
 
     char nom_memoire[20];
     char mutex_name[30];
-    for(int i = 0;i<NB_ROBOT;i++){
+    for(int i = 0;i<NB_MAX_ROBOT;i++){
         // Gestion des mémoires partagées
         sprintf(nom_memoire, "robots_data[%d]", i);
         CHECK(shm[i] = shm_open(nom_memoire, O_CREAT | O_RDWR, 0666),"shm_open(robots_data)");
@@ -63,8 +80,9 @@ int main(int argc, char *argv[]) {
     CHECK(sigaddset(&Mask , SIGINT), "sigaddset(SIGINT)");
     CHECK(sigprocmask(SIG_SETMASK , &Mask , &OldMask), "sigprocmask()");
 
-    // Création des fils du processus père (un par train)
-    for (int i=0;i<nb_processus;i++){
+    pid_t pid[2];
+    // Création des fils du processus père
+    for (int i=0;i<2;i++){
         CHECK(pid[i]=fork(),"fork(pid)");
         if (pid[i]==0){
             // Démasque SIGINT
@@ -79,16 +97,9 @@ int main(int argc, char *argv[]) {
                     gestionnaire_inventaire(client_sd);
                 }
             }
-            if(i>0 && i<=NB_ROBOT){
-                // Processus de gestion des robots
-                printf("Robot %d\n",i-1);
-                gestion_robot(i-1);
-            }
-            else if(i>NB_ROBOT && i< nb_processus){
-                // Autres gestionnaires
-                // Pour l'instant rien
-                printf("Gestionnaire de traj de robot %d\n",i-NB_ROBOT-1);
-                while(1);
+            else if(i==1){
+                // Processus de gestion de la flotte de robots
+                gestion_flotte();
             }
 
         }
@@ -96,18 +107,18 @@ int main(int argc, char *argv[]) {
 
     // Processus Père
     // Attente de la terminaison des fils
-    for (int i=0;i<nb_processus;i++){
+    for (int i=0;i<2;i++){
         int status;
         CHECK(wait(&status), "wait()");
     }
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 
 void bye(){
     char nom_memoire[20];
     char mutex_name[30];
-    for(int i = 0;i<NB_ROBOT;i++){
+    for(int i = 0;i<NB_MAX_ROBOT;i++){
         // Suppression de la mémoire partagée
         sprintf(nom_memoire, "robots_data[%d]", i);
         CHECK(munmap(robots[i], size_robot),"munmap(robots_data)");
@@ -158,10 +169,10 @@ void gestionnaire_inventaire(int client_sd){
     if (sscanf(buffer_reception_ID_articles, "%[^,],%d", size_type, &new_size) == 2) {
         if (strcmp(size_type, "rows") == 0) {
             // Modification du nombre de lignes
-            nb_lignes = new_size;
+            *nb_lignes = new_size;
         } else if (strcmp(size_type, "columns") == 0) {
             // Modification du nombre de colonnes
-            nb_colonnes = new_size;
+            *nb_colonnes = new_size;
         }
         else {
             strcpy(buffer_emission, "Invalid size type");
@@ -197,11 +208,11 @@ void gestionnaire_inventaire(int client_sd){
             CHECK(sem_wait(sem_memoire_robot[ID_robot]),"sem_wait(sem_memoire_robot)");
             update_shared_memory_stock(robots[ID_robot],selected_items[i],j);
             CHECK(sem_post(sem_memoire_robot[ID_robot]),"sem_post(sem_memoire_robot)");
-            ID_robot = (ID_robot + 1) % NB_ROBOT; // Pour l'instant pas de choix optimal du robot, on prend juste à son tour les robots
+            ID_robot = (ID_robot + 1) % NB_MAX_ROBOT; // Pour l'instant pas de choix optimal du robot, on prend juste à son tour les robots
         }
     }
 
-    for(int i = 0;i<NB_ROBOT;i++){
+    for(int i = 0;i<NB_MAX_ROBOT;i++){
         print_robot_state(robots[i]);
     }
 
@@ -216,27 +227,45 @@ void gestionnaire_inventaire(int client_sd){
 
 }
 
-void gestion_robot(int no){
-    while(1);
-    // int se;
-    // init_tcp_socket(&se,ip,ports[no],1);
-    // char buff_emission[MAX_WAYPOINTS];
-    // char buff_reception[50];
-    // while (1){
-    //     int* waypoints = NULL;
-    //     while(waypoints == NULL){
-    //         // On attend
-    //         sleep(2);
-    //         CHECK(sem_wait(sem_memoire_robot[no]),"sem_post(sem_memoire_robot)");
-    //         waypoints = robots[no]->waypoints;
-    //         CHECK(sem_post(sem_memoire_robot[no]),"sem_post(sem_memoire_robot)");
-    //     }
-    //     // Des waypoints ont été ajoutés
-    //     // Traitons les
-    //     send_message(se,buff_emission);
-    //     recev_message(se,buff_reception);
-    //     // A finir
+void gestion_flotte(void){
+    int se;
+    init_tcp_socket(&se,LOCAL_IP,PORT_ROBOT,1);
+    char buff_reception[MAXOCTETS + 1];
+    int client_sd;
+    listen(se, NB_MAX_ROBOT);
+    int no = 0; // Le numéro du robot
+    while (1){
+        client_sd = accept_client(se);
+        recev_message(client_sd,buff_reception);
+        // Traitement sur buff_reception pour savoir si le robot a le droit de se connecter
+        // TODO
 
-    // }
-    // close_socket(&se);
+        // Le robot a le droit de se connecter, on crée donc ses gestionnaires
+        pid_t pid[2];
+        for (int i=0;i<2;i++){
+            CHECK(pid[i]=fork(),"fork(pid)");
+            if (pid[i]==0){
+                if(i==0){
+                    // Gestionnaire de communication avec le robot
+                    gestion_communication_robot(no,client_sd);
+                }
+                if(i==1){
+                    // Processus de gestion de trajectoire du robot
+                    gestionnaire_traj_robot(no);
+                }
+            }
+        }
+        no++;
+
+    }
+}
+
+void gestionnaire_traj_robot(int no){
+    while(1);
+    // Faite par Thibaud
+}
+
+void gestion_communication_robot(int no,int se){
+    while(1);
+    // Faite par Thibaud et Marion
 }
