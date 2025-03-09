@@ -13,9 +13,8 @@ char ip[IP_SIZE];
 void bye();
 
 void gestionnaire_inventaire(int client_sd);
-void gestion_flotte(void);
 
-void gestion_communication_robot(int no,int se);
+void gestion_communication_robot(int no, int se, int *nb_robots);
 void gestionnaire_traj_robot(int no);
 
 int shm[NB_MAX_ROBOT];
@@ -34,6 +33,13 @@ int main(int argc, char *argv[]) {
         strncpy(ip, DEFAULT_LOCALIP, IP_SIZE - 1);
         ip[IP_SIZE - 1] = '\0';
     }
+
+    int *nb_robots;
+    int shm_nb_robots;
+    CHECK(shm_nb_robots = shm_open("nb_robots", O_CREAT | O_RDWR, 0666), "shm_open(nb_robots)");
+    CHECK(ftruncate(shm_nb_robots, sizeof(int)), "ftruncate(shm_nb_robots)");
+    CHECK_MAP(nb_robots = mmap(0, sizeof(int), PROT_READ | PROT_WRITE, MAP_SHARED, shm_nb_robots, 0), "mmap(nb_robots)");
+    *nb_robots = 0;
 
     char nom_memoire[20];
     char mutex_name[30];
@@ -80,7 +86,7 @@ int main(int argc, char *argv[]) {
             }
             if(i==1){
                 // Processus de gestion de la flotte de robots
-                gestion_flotte();
+                gestion_flotte(nb_robots);
             }
 
         }
@@ -208,7 +214,7 @@ void gestionnaire_inventaire(int client_sd){
 
 }
 
-void gestion_flotte(void){
+void gestion_flotte(int *nb_robots){
     int se;
     init_tcp_socket(&se,LOCAL_IP,PORT_ROBOT,1);
     listen(se, MAXCLIENTS);
@@ -225,7 +231,7 @@ void gestion_flotte(void){
             close_socket(&client_sd);
             continue;
         }
-        printf("Robot %d connected\n", robot_id);
+        *nb_robots += 1;
 
         // Le robot a le droit de se connecter, on crée donc ses gestionnaires
         pid_t pid[2];
@@ -234,7 +240,7 @@ void gestion_flotte(void){
             if (pid[i]==0){
                 if(i==0){
                     // Gestionnaire de communication avec le robot
-                    gestion_communication_robot(robot_id, client_sd);
+                    gestion_communication_robot(robot_id, client_sd, nb_robots);
                 }
                 if(i==1){
                     // Processus de gestion de trajectoire du robot
@@ -250,7 +256,11 @@ void gestionnaire_traj_robot(int no){
     // Faite par Thibaud
 }
 
-void gestion_communication_robot(int no,int se){
+void gestion_communication_robot(int no, int se, int *nb_robots){
+    printf("Robot %d connected\n", no);
+    printf("Nombre de robots connectés : %d\n", *nb_robots);
     while(1);
     // Faite par Thibaud et Marion
+
+    // penser à faire diminuer le nombre de robots lorsqu'un robot se déconnecte
 }
