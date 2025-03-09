@@ -272,6 +272,9 @@ int choose_items_stocks(char *item_names_requested[], int L_n_requested[], int c
 }
 
 void print_robot_state(Robot* robot){
+    if (robot == NULL) {
+        return;
+    }
     printf("Robot ID: %d\n", robot->ID);
     for (int i = 0; i < MAX_WAYPOINTS; i++) {
         if (robot->waypoints[i] != 0)
