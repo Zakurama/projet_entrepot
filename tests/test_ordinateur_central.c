@@ -494,16 +494,18 @@ void test_name_waypoints_creation(void){
         total_length += strlen(liste_waypoints.name_waypoints[i]); 
     }
 
-    CU_ASSERT(total_length != 0);
+    CU_ASSERT(total_length != 0);    
 
     char *buffer = (char *)malloc(total_length * sizeof(char));
     buffer[0] = '\0';  
 
-    for (int i = 0; liste_waypoints.name_waypoints[i] != NULL; i++) {
+    int i = 0; 
+    for (i=0; liste_waypoints.name_waypoints[i] != NULL; i++) {
         strcat(buffer, liste_waypoints.name_waypoints[i]);
         free(liste_waypoints.name_waypoints[i]);  // Libérer la mémoire
     }
 
+    CU_ASSERT(i == 22); //nb_waypoints
     CU_ASSERT_STRING_EQUAL(buffer, "M5M10M15M20M25M30D5D10D15D20D25D30S11S12S21S22S31S32B5B15P25P30");
 
     free(buffer);
