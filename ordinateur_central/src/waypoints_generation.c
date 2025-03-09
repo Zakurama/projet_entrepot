@@ -37,22 +37,16 @@ void name_waypoints_creation(Liste_pos_waypoints *liste_waypoints, int nb_column
     
     // Ajouter un marqueur de fin (optionnel si nécessaire)
     liste_waypoints->name_waypoints[index] = NULL;
-    position_waypoints(liste_waypoints, nb_column, nb_row, nb_robot);
 }
 
-
-void waypoints_creation (Liste_pos_waypoints *liste_waypoints, Point hedge2, Point hedge3, Point hedge4, Point hedge5, int nb_column, int nb_row){
-
-}
-
-
-void position_waypoints(Liste_pos_waypoints *liste_waypoints, int nb_column, int nb_row, int nb_robot) {
+void position_waypoints_creation(Liste_pos_waypoints *liste_waypoints, int nb_column, int nb_row, int nb_robot, Point hedge3, Point hedge4, Point hedge5) {
     int index = 0;
     
     // Calculs de base
-    float y_M = DEFAULT_HEDGE_5.y - STORAGE_BIN_LENGTH - 3 * ROBOT_WIDTH;
-    float y_D = DEFAULT_HEDGE_5.y - STORAGE_BIN_LENGTH - 6 * ROBOT_WIDTH;
-    float x_0 = 50 + DEFAULT_HEDGE_3.x + (STORAGE_BIN_WIDTH / 2);
+    float y_M = hedge5.y - STORAGE_BIN_LENGTH - 2* ROBOT_WIDTH;
+    float y_B = hedge4.y + ROBOT_WIDTH ;
+    float y_D = (y_B+y_M)/2; 
+    float x_0 = 50 + hedge3.x + (STORAGE_BIN_WIDTH / 2);
 
     // Placement des M*
     for (int i = 0; i < nb_row * 2 ; i++) {
@@ -71,42 +65,25 @@ void position_waypoints(Liste_pos_waypoints *liste_waypoints, int nb_column, int
     // Placement des Sij
     for (int i = 0; i < nb_row; i++) {
         for (int j = 0; j < nb_column; j++) {
-            liste_waypoints->pos_waypoints[index].x = liste_waypoints->pos_waypoints[i*2].x;
-            liste_waypoints->pos_waypoints[index++].y = DEFAULT_HEDGE_5.y + STORAGE_BIN_LENGTH *j; 
+            liste_waypoints->pos_waypoints[index].x = liste_waypoints->pos_waypoints[1+i*2].x;
+            liste_waypoints->pos_waypoints[index++].y = hedge5.y + STORAGE_BIN_LENGTH *j; 
         }
     }
     // Placement des B5 et B15 (même hauteur que M5 et M15)
-    float y_B = DEFAULT_HEDGE_4.y + 200 ;
-
     liste_waypoints->pos_waypoints[index].y = y_B;
     liste_waypoints->pos_waypoints[index++].x = liste_waypoints->pos_waypoints[0].x;// Même que M5
     liste_waypoints->pos_waypoints[index].y = y_B; 
-    liste_waypoints->pos_waypoints[index++].x = liste_waypoints->pos_waypoints[1].x; // Même que M15
+    liste_waypoints->pos_waypoints[index++].x = liste_waypoints->pos_waypoints[2].x; // Même que M15
 
     // Placement des parkings (P25, P30, ...)
     for (int i = 0; i < nb_robot; i++) {
         liste_waypoints->pos_waypoints[index].y = y_B;
-        liste_waypoints->pos_waypoints[index].x = liste_waypoints->pos_waypoints[4+i].x;
+        liste_waypoints->pos_waypoints[index].x = liste_waypoints->pos_waypoints[4+i%nb_row].x;
         index++;
     }
-
 }
 
-/** DEBUG 
-void save_waypoints_to_file(Liste_pos_waypoints *liste_waypoints) {
-    FILE *file = fopen("waypoints.txt", "w");
-    if (!file) {
-        perror("Erreur ouverture fichier");
-        return;
-    }
-
-    for (int i = 0; liste_waypoints->name_waypoints[i] != NULL; i++) {
-        fprintf(file, "%s %.2f %.2f\n",
-                liste_waypoints->name_waypoints[i],
-                liste_waypoints->pos_waypoints[i].x,
-                liste_waypoints->pos_waypoints[i].y);
-    }
-
-    fclose(file);
+void waypoints_creation (Liste_pos_waypoints *liste_waypoints, Point hedge3, Point hedge4, Point hedge5, int nb_column, int nb_row, int nb_robot){
+    name_waypoints_creation(liste_waypoints,  nb_column,  nb_row,  nb_robot) ; 
+    position_waypoints_creation(liste_waypoints, nb_column, nb_row, nb_robot,   hedge3,  hedge4,  hedge5);
 }
-*/

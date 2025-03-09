@@ -23,7 +23,6 @@ Robot* robots[NB_ROBOT];
 sem_t* sem_memoire_robot[NB_ROBOT];
 
 int main(int argc, char *argv[]) {
-    
     int nb_processus = 1+2*NB_ROBOT;
 
     if(argc == 2){
