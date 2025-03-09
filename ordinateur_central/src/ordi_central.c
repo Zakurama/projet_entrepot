@@ -28,7 +28,7 @@ void trajectoire(const char* pos_initiale, const char* pos_finale, char path[MAX
         // Si le début c'est un bac alors on retourne en PXX avant de repartir
         if(pos_index == 5){
             // On s'avance sur le deuxième bac
-            strcpy(path[i], "B10");
+            strcpy(path[i], "B15");
             i++;
         }
         strcpy(path[i], "P25");
@@ -95,6 +95,18 @@ void trajectoire(const char* pos_initiale, const char* pos_finale, char path[MAX
                 // On va sur la colone de montée
                 sprintf(holder_name_place, "M%d", pos_index);
                 strcpy(path[i], holder_name_place);
+            }
+            if(pos_index < pos_finale_index && type_pos=='S' && type_pos_finale!='S' ){
+                // On va vers la gauche
+                if((pos_index-1)%(NB_COLONNES + 1)==0){
+                    // On est arrivé en bout (début) des étagères
+                    sprintf(holder_name_place, "M%d", pos_index-1);
+                    strcpy(path[i], holder_name_place);
+                }
+                else{
+                    sprintf(holder_name_place, "S%d", pos_index-1);
+                    strcpy(path[i], holder_name_place);
+                }
             }
         }
 
@@ -362,16 +374,16 @@ void remove_first_waypoint_of_robot(Robot *robot) {
     robot->waypoints[MAX_WAYPOINTS - 1][0] = '\0';
 }
 
-void get_current_and_final_pos(Robot* robot,int no,sem_t* sem_robot,char* current_pos[SIZE_POS],char* pos_finale[SIZE_POS],char type_final_pos){
+void get_current_and_final_pos(Robot* robot,int no,sem_t* sem_robot,char current_pos[SIZE_POS],char pos_finale[SIZE_POS],char type_final_pos){
     
     CHECK(sem_wait(sem_robot),"sem_wait(sem_memoire_robot)");
     if (type_final_pos == 'B'){
         strcpy(current_pos,robot->current_pos);
-        sprintf(pos_finale, "B%d",(NB_COLONNES+1)*(no+1));
+        sprintf(pos_finale, "B%d",(NB_COLONNES+1)*(2*no+1));
     }
     else if(type_final_pos == 'P'){
         strcpy(current_pos,robot->current_pos);
-        sprintf(pos_finale, "P%d",(NB_COLONNES+1)*5 + no*(NB_COLONNES+1));
+        sprintf(pos_finale, "P%d",(2*NB_BAC+no+1)*(NB_COLONNES+1));
     }
     else if(type_final_pos == 'S'){
         strcpy(current_pos,robot->current_pos);
@@ -381,9 +393,47 @@ void get_current_and_final_pos(Robot* robot,int no,sem_t* sem_robot,char* curren
 
 }
 
-void generate_waypoints(const char current_pos[SIZE_POS],const char pos_finale[SIZE_POS],Robot* memoire_robot, sem_t* sem_robot){
+int get_index_of_waypoint(char type_pos,int no_pos){
+    // Retourne l'index de la liste de mutex correspondant d'un waypoint
+    if(type_pos == 'P'){
+        return no_pos/(NB_COLONNES+1) -1 -2*NB_BAC;
+    }
+    else if(type_pos == 'B'){
+        return (no_pos/(NB_COLONNES+1)-1)/2;
+    }
+    else if(type_pos == 'S'){
+        return no_pos/(2*(NB_COLONNES+1)) -1;
+    }
+    else if(type_pos == 'D' || type_pos == 'M'){
+        return no_pos/(NB_COLONNES+1) -1;
+    }
+    return -1;
+}
+
+void free_mutex(char type_pos,int no_mutex,sem_t* sem_bac[NB_BAC],sem_t* sem_parking[NB_ROBOT],sem_t* sem_lignes[NB_LIGNES],sem_t* sem_colonneNord[2*NB_LIGNES],sem_t* sem_colonneSud[2*NB_LIGNES]){
+    if(type_pos == 'P'){
+        CHECK(sem_post(sem_parking[no_mutex]),"sem_post(sem_parking)");
+    }
+    else if(type_pos == 'B'){
+        CHECK(sem_post(sem_bac[no_mutex]),"sem_post(sem_bac)");
+    }
+    else if(type_pos == 'S'){
+        CHECK(sem_post(sem_lignes[no_mutex]),"sem_post(sem_lignes)");
+    }
+    else if(type_pos == 'D'){
+        CHECK(sem_post(sem_colonneNord[no_mutex]),"sem_post(sem_colonneNord)");
+    }
+    else if(type_pos == 'M'){
+        CHECK(sem_post(sem_colonneSud[no_mutex]),"sem_post(sem_colonneSud)");
+    }
+}
+
+void generate_waypoints(const char current_pos[SIZE_POS],const char pos_finale[SIZE_POS],Robot* memoire_robot, sem_t* sem_robot,sem_t* sem_bac[NB_BAC],sem_t* sem_parking[NB_ROBOT],sem_t* sem_lignes[NB_LIGNES],sem_t* sem_colonneNord[2*NB_LIGNES],sem_t* sem_colonneSud[2*NB_LIGNES]){
     // Fonction qui détermine la trajectoire, demande les ressources associées et met à jour une structure
     
+    char type_pos;
+    int no_mutex;
+
     // Initialisation du chemin
     char path[MAX_WAYPOINTS][SIZE_POS];
     for(int i =0;i<MAX_WAYPOINTS;i++){
@@ -394,16 +444,36 @@ void generate_waypoints(const char current_pos[SIZE_POS],const char pos_finale[S
     trajectoire(current_pos, pos_finale, path);
 
     // On boucle pour demander les mutex dans l'ordre
-    for (int i = 0; i < MAX_WAYPOINTS; i++) {
+    for (int i = 1; i < MAX_WAYPOINTS; i++) { // Commence à 1 car le premier point de la trajectoire (la position courante) ne nous intéresse pas
         if (path[i][0] == '\0') {
             break;
         }
+
+        // Identification de la mutex correspondante
+        type_pos = path[i][0];
+        no_mutex = get_index_of_waypoint(type_pos,atoi(path[i]+1));
+        
         // On se met sur la file d'attente
         // Tant que ce n'est pas mon tour j'attend
         // TODO
 
         // C'est mon tour, je demande la mutex
-        // TODO
+        if(type_pos == 'P'){
+            CHECK(sem_wait(sem_parking[no_mutex]),"sem_wait(sem_parking)");
+        }
+        else if(type_pos == 'B'){
+            CHECK(sem_wait(sem_bac[no_mutex]),"sem_wait(sem_bac)");
+        }
+        else if(type_pos == 'S'){
+            CHECK(sem_wait(sem_lignes[no_mutex]),"sem_wait(sem_lignes)");
+        }
+        else if(type_pos == 'D'){
+            CHECK(sem_wait(sem_colonneNord[no_mutex]),"sem_wait(sem_colonneNord)");
+        }
+        else if(type_pos == 'M'){
+            CHECK(sem_wait(sem_colonneSud[no_mutex]),"sem_wait(sem_colonneSud)");
+        }
+
         // On met à jour au fur et a mesure la liste des WAIPOINTS du robot
         CHECK(sem_wait(sem_robot),"sem_wait(sem_memoire_robot)");
         add_waypoint(memoire_robot, path[i]);

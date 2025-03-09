@@ -299,7 +299,7 @@ void gestionnaire_traj_robot(int no){
 
         // On vérifie si on ne se trouve pas déjà au bon endroit
         if(strcmp(current_pos,pos_finale)!=0){
-            generate_waypoints(current_pos,pos_finale,robots[no],sem_memoire_robot[no]);
+            generate_waypoints(current_pos,pos_finale,robots[no],sem_memoire_robot[no],sem_bac,sem_parking,sem_lignes,sem_colonneNord,sem_colonneSud);
         }
 
         // On regarde combien d'articles on peut porter
@@ -331,7 +331,7 @@ void gestionnaire_traj_robot(int no){
 
         // On doit aller au bac
         get_current_and_final_pos(robots[no],no,sem_memoire_robot[no],current_pos,pos_finale,'B');
-        generate_waypoints(current_pos,pos_finale,robots[no],sem_memoire_robot[no]);
+        generate_waypoints(current_pos,pos_finale,robots[no],sem_memoire_robot[no],sem_bac,sem_parking,sem_lignes,sem_colonneNord,sem_colonneSud);
 
         // On vide dans le bac
         CHECK(sem_wait(sem_memoire_robot[no]),"sem_wait(sem_memoire_robot)");
@@ -340,7 +340,7 @@ void gestionnaire_traj_robot(int no){
 
         // On retourne au parking
         get_current_and_final_pos(robots[no],no,sem_memoire_robot[no],current_pos,pos_finale,'P');
-        generate_waypoints(current_pos,pos_finale,robots[no],sem_memoire_robot[no]);
+        generate_waypoints(current_pos,pos_finale,robots[no],sem_memoire_robot[no],sem_bac,sem_parking,sem_lignes,sem_colonneNord,sem_colonneSud);
     }
 }
 
@@ -350,6 +350,10 @@ void gestion_robot(int no){
     char parking_spot[SIZE_POS];
     sprintf(parking_spot, "P%d", (NB_COLONNES+1)*5 + no*(NB_COLONNES+1));
 
+    // On prends la mutex de cette place
+    int no_mutex = get_index_of_waypoint('P',(NB_COLONNES+1)*5 + no*(NB_COLONNES+1));
+    CHECK(sem_wait(sem_parking[no_mutex]),"sem_wait(sem_parking)");
+
     // Initialisation de la mémoire partagée
     CHECK(sem_wait(sem_memoire_robot[no]),"sem_wait(sem_memoire_robot)");
     robots[no]->ID = no;
@@ -357,10 +361,17 @@ void gestion_robot(int no){
     robots[no]->hold_items=0;
     CHECK(sem_post(sem_memoire_robot[no]),"sem_post(sem_memoire_robot)");
     
+    // Position initiale pour chaque trajet
+    char pos_init[SIZE_POS];
+    strcpy(pos_init,parking_spot);
+
     while(1){
 
         // Holder des waypoints
         char waypoints[MAX_WAYPOINTS][SIZE_POS];
+        for(int i = 0;i<MAX_WAYPOINTS;i++){
+            waypoints[i][0]='\0';
+        }
 
         // On regarde si il y a de nouveau waypoints dans la mémoire partagée
         CHECK(sem_wait(sem_memoire_robot[no]),"sem_wait(sem_memoire_robot)");
@@ -403,8 +414,27 @@ void gestion_robot(int no){
         // On attend le retour du robot
         // TODO
 
-        // On libère les mutex
-        // TODO
+        // Libèration des mutex 
+        // On libère d'abord la mutex de la position initiale (qui n'apparait pas dans la liste des waypoints)
+        char type_pos = pos_init[0];
+        no_mutex = get_index_of_waypoint(type_pos,atoi(pos_init+1));
+        free_mutex(type_pos,no_mutex,sem_bac,sem_parking,sem_lignes,sem_colonneNord,sem_colonneSud);
+
+        // On libère la suite (on libère tout sauf la position finale)
+        int index_pos_finale;
+        for(int i =0;i<MAX_WAYPOINTS;i++){
+            if(!strcmp(waypoints[i+1],"\0")){
+                index_pos_finale = i;
+                break;
+            }
+            type_pos = waypoints[i][0];
+            no_mutex = get_index_of_waypoint(type_pos,atoi(waypoints[i]+1));
+            free_mutex(type_pos,no_mutex,sem_bac,sem_parking,sem_lignes,sem_colonneNord,sem_colonneSud);
+        }
+
+        // On définit la prochaine position initiale
+        strcpy(pos_init,waypoints[index_pos_finale]);
+
     }
 
 }

@@ -18,12 +18,15 @@ void test_trajectoire_generique(const char *pos_initiale, const char *pos_finale
 
     trajectoire(pos_initiale, pos_finale, path);
 
+    printf(" [");
     for (int i = 0; i < MAX_WAYPOINTS; i++) {
         if (expected[i][0] == '\0' && path[i][0] == '\0') {
             break;
         }
+        printf(" %s ",path[i]);
         CU_ASSERT_STRING_EQUAL(path[i], expected[i]);
     }
+    printf("] ");
 }
 
 void test_trajectoire_D25_S14() {
@@ -76,30 +79,30 @@ void test_trajectoire_P25_B5() {
 
 void test_trajectoire_B5_P25() {
     char expected[MAX_WAYPOINTS][SIZE_POS] = {
-        "B5", "B10", "P25"
+        "B5", "B15", "P25"
     };
     test_trajectoire_generique("B5", "P25", expected);
 }
 
-void test_trajectoire_B10_P25() {
+void test_trajectoire_B15_P25() {
     char expected[MAX_WAYPOINTS][SIZE_POS] = {
-        "B10", "P25"
+        "B15", "P25"
     };
-    test_trajectoire_generique("B10", "P25", expected);
+    test_trajectoire_generique("B15", "P25", expected);
 }
 
-void test_trajectoire_D30_B10() {
+void test_trajectoire_D30_B15() {
     char expected[MAX_WAYPOINTS][SIZE_POS] = {
-        "D30","D35","D40","M40","M35", "M30", "M25", "M20", "M15", "M10","M5","D5", "D10", "B10"
+        "D30","D35","D40","M40","M35", "M30", "M25", "M20", "M15", "M10","M5","D5","D10", "D15", "B15"
     };
-    test_trajectoire_generique("D30", "B10", expected);
+    test_trajectoire_generique("D30", "B15", expected);
 }
 
-void test_trajectoire_S11_B10() {
+void test_trajectoire_S11_B15() {
     char expected[MAX_WAYPOINTS][SIZE_POS] = {
-        "S11","M10","M5","D5","D10","B10"
+        "S11","M10","M5","D5","D10","D15","B15"
     };
-    test_trajectoire_generique("S11", "B10", expected);
+    test_trajectoire_generique("S11", "B15", expected);
 }
 
 void test_parse_stock_good_request(void) {
@@ -501,9 +504,9 @@ int main() {
     CU_add_test(suite, "Trajectoire de S14 à P25", test_trajectoire_S14_P25);
     CU_add_test(suite, "Trajectoire de P25 à B5", test_trajectoire_P25_B5);
     CU_add_test(suite, "Trajectoire de B5 à P25", test_trajectoire_B5_P25);
-    CU_add_test(suite, "Trajectoire de B10 à P25", test_trajectoire_B10_P25);
-    CU_add_test(suite, "Trajectoire de D30 à B10", test_trajectoire_D30_B10);
-    CU_add_test(suite, "Trajectoire de S11 à B10", test_trajectoire_S11_B10);
+    CU_add_test(suite, "Trajectoire de B15 à P25", test_trajectoire_B15_P25);
+    CU_add_test(suite, "Trajectoire de D30 à B15", test_trajectoire_D30_B15);
+    CU_add_test(suite, "Trajectoire de S11 à B15", test_trajectoire_S11_B15);
     
     if (NULL == CU_add_test(suite, "test parse stock good request", test_parse_stock_good_request)) {
         CU_cleanup_registry();
