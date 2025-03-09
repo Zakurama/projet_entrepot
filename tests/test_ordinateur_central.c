@@ -48,21 +48,21 @@ void test_trajectoire_P25_S44() {
 
 void test_trajectoire_S44_S11() {
     char expected[MAX_WAYPOINTS][SIZE_POS] = {
-        "S44", "S43", "S42", "S41", "S40", "M40", "M35", "M30", "M25", "M20", "M15", "M10", "S11"
+        "S44", "S43", "S42", "S41", "M40", "M35", "M30", "M25", "M20", "M15", "M10", "S11"
     };
     test_trajectoire_generique("S44", "S11", expected);
 }
 
 void test_trajectoire_S11_S44() {
     char expected[MAX_WAYPOINTS][SIZE_POS] = {
-        "S11", "S10", "M10","M5","D5", "D10", "D15", "D20", "D25", "D30", "D35", "D40", "M40", "S41", "S42", "S43", "S44"
+        "S11", "M10","M5","D5", "D10", "D15", "D20", "D25", "D30", "D35", "D40", "M40", "S41", "S42", "S43", "S44"
     };
     test_trajectoire_generique("S11", "S44", expected);
 }
 
 void test_trajectoire_S14_P25() {
     char expected[MAX_WAYPOINTS][SIZE_POS] = {
-        "S14", "S13", "S12", "S11", "S10", "M10","M5","D5", "D10", "D15", "D20", "D25", "P25"
+        "S14", "S13", "S12", "S11", "M10","M5","D5", "D10", "D15", "D20", "D25", "P25"
     };
     test_trajectoire_generique("S14", "P25", expected);
 }
@@ -90,9 +90,16 @@ void test_trajectoire_B10_P25() {
 
 void test_trajectoire_D30_B10() {
     char expected[MAX_WAYPOINTS][SIZE_POS] = {
-        "D30","D35","D40","M40","M35", "M30", "M25", "M20", "M15", "M10", "D10", "B10"
+        "D30","D35","D40","M40","M35", "M30", "M25", "M20", "M15", "M10","M5","D5", "D10", "B10"
     };
     test_trajectoire_generique("D30", "B10", expected);
+}
+
+void test_trajectoire_S11_B10() {
+    char expected[MAX_WAYPOINTS][SIZE_POS] = {
+        "S11","M10","M5","D5","D10","B10"
+    };
+    test_trajectoire_generique("S11", "B10", expected);
 }
 
 void test_parse_stock_good_request(void) {
@@ -360,14 +367,12 @@ void test_update_shared_memory_stock(void) {
     CU_ASSERT_EQUAL(robot.positions[0][1], 11);
 
     CU_ASSERT_PTR_NOT_NULL(robot.quantities[0]);
-    CU_ASSERT_EQUAL(robot.quantities[0][0], 3);
+    CU_ASSERT_EQUAL(robot.quantities[0], 3);
 
     // Libération de la mémoire allouée
     free(item.positions[0]);
     free(item.positions);
     free(item.quantities);
-    free(robot.positions[0]);
-    free(robot.quantities[0]);
 }
 
 void test_create_inventory_string(void) {
@@ -498,7 +503,8 @@ int main() {
     CU_add_test(suite, "Trajectoire de B5 à P25", test_trajectoire_B5_P25);
     CU_add_test(suite, "Trajectoire de B10 à P25", test_trajectoire_B10_P25);
     CU_add_test(suite, "Trajectoire de D30 à B10", test_trajectoire_D30_B10);
-
+    CU_add_test(suite, "Trajectoire de S11 à B10", test_trajectoire_S11_B10);
+    
     if (NULL == CU_add_test(suite, "test parse stock good request", test_parse_stock_good_request)) {
         CU_cleanup_registry();
         return CU_get_error();
