@@ -484,7 +484,7 @@ void test_create_inventory_string_single_item(void) {
 }
 
 void test_authorize_robot_connexion_authorized(void) {
-    char *file_name = "robots.csv";
+    char *file_name = "temp_robots.csv";
     char *robot_ip = "192.168.1.1";
 
     // Create a temporary CSV file for testing
@@ -501,7 +501,7 @@ void test_authorize_robot_connexion_authorized(void) {
 }
 
 void test_authorize_robot_connexion_not_authorized(void) {
-    char *file_name = "robots.csv";
+    char *file_name = "temp_robots.csv";
     char *robot_ip = "192.168.1.3";
 
     // Create a temporary CSV file for testing
