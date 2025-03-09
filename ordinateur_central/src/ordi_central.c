@@ -362,6 +362,57 @@ void remove_first_waypoint_of_robot(Robot *robot) {
     robot->waypoints[MAX_WAYPOINTS - 1][0] = '\0';
 }
 
+void get_current_and_final_pos(Robot* robot,int no,sem_t* sem_robot,char* current_pos[SIZE_POS],char* pos_finale[SIZE_POS],char type_final_pos){
+    
+    CHECK(sem_wait(sem_robot),"sem_wait(sem_memoire_robot)");
+    if (type_final_pos == 'B'){
+        strcpy(current_pos,robot->current_pos);
+        sprintf(pos_finale, "B%d",(NB_COLONNES+1)*(no+1));
+    }
+    else if(type_final_pos == 'P'){
+        strcpy(current_pos,robot->current_pos);
+        sprintf(pos_finale, "P%d",(NB_COLONNES+1)*5 + no*(NB_COLONNES+1));
+    }
+    else if(type_final_pos == 'S'){
+        strcpy(current_pos,robot->current_pos);
+        sprintf(pos_finale, "S%d%d",robot->positions[0][0],robot->positions[0][1]);
+    }
+    CHECK(sem_post(sem_robot),"sem_post(sem_memoire_robot)");
+
+}
+
+void generate_waypoints(const char current_pos[SIZE_POS],const char pos_finale[SIZE_POS],Robot* memoire_robot, sem_t* sem_robot){
+    // Fonction qui détermine la trajectoire, demande les ressources associées et met à jour une structure
+    
+    // Initialisation du chemin
+    char path[MAX_WAYPOINTS][SIZE_POS];
+    for(int i =0;i<MAX_WAYPOINTS;i++){
+        path[i][0] = '\0';
+    }
+
+    // On détermine la trajectoire
+    trajectoire(current_pos, pos_finale, path);
+
+    // On boucle pour demander les mutex dans l'ordre
+    for (int i = 0; i < MAX_WAYPOINTS; i++) {
+        if (path[i][0] == '\0') {
+            break;
+        }
+        // On se met sur la file d'attente
+        // Tant que ce n'est pas mon tour j'attend
+        // TODO
+
+        // C'est mon tour, je demande la mutex
+        // TODO
+        // On met à jour au fur et a mesure la liste des WAIPOINTS du robot
+        CHECK(sem_wait(sem_robot),"sem_wait(sem_memoire_robot)");
+        add_waypoint(memoire_robot, path[i]);
+        // On met a jour la position du robot
+        strcpy(memoire_robot->current_pos,path[i]);
+        CHECK(sem_post(sem_robot),"sem_post(sem_memoire_robot)");
+    }
+}
+
 void remove_first_item_of_robot(Robot *robot) {
     if (robot->item_name[0][0] == '\0') {
         printf("No item to remove!\n");

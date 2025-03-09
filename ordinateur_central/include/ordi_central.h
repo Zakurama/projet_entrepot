@@ -61,5 +61,7 @@ char *create_inventory_string(int nb_items, int max_elements, int count[max_elem
 
 void remove_first_waypoint_of_robot(Robot *robot);
 int add_waypoint(Robot *robot, const char *waypoint);
+void generate_waypoints(const char current_pos[SIZE_POS],const char pos_finale[SIZE_POS],Robot* memoire_robot, sem_t* sem_robot);
 void remove_first_item_of_robot(Robot *robot);
+void get_current_and_final_pos(Robot* robot,int no,sem_t* sem_robot,char current_pos[SIZE_POS],char pos_finale[SIZE_POS],char type_final_pos);
 #endif
