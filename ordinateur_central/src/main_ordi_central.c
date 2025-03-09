@@ -231,6 +231,10 @@ void gestion_flotte(int *nb_robots){
             close_socket(&client_sd);
             continue;
         }
+        if (*nb_robots >= NB_MAX_ROBOT) {
+            close_socket(&client_sd);
+            continue;
+        }
         *nb_robots += 1;
 
         // Le robot a le droit de se connecter, on crée donc ses gestionnaires
