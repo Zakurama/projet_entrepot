@@ -5,14 +5,14 @@ void name_waypoints_creation(Liste_pos_waypoints *liste_waypoints, int nb_column
     int index = 0;
     char buffer[20];
 
-    // Générer M5 à M(10 * nb_row) en incrémentant de 5
-    for (int i = 5; i <= 10 * nb_row; i += 5) {
+    // Générer M(nb_column + 1) à M((nb_column+1)* nb_row*2) en incrémentant de nb_column +1
+    for (int i = nb_column+1; i <=  (nb_column+1)* nb_row*2; i += nb_column+1) {
         snprintf(buffer, sizeof(buffer), "M%d", i);
         liste_waypoints->name_waypoints[index++] = strdup(buffer);
     }
     
-    // Générer D5 à D(10 * nb_row) en incrémentant de 5
-    for (int i = 5; i <= 10 * nb_row; i += 5) {
+    // Générer D(nb_column + 1) à D((nb_column+1)* nb_row*2) en incrémentant de nb_column +1
+    for (int i = nb_column+1; i <=  (nb_column+1)* nb_row*2; i += nb_column+1) {
         snprintf(buffer, sizeof(buffer), "D%d", i);
         liste_waypoints->name_waypoints[index++] = strdup(buffer);
     }
@@ -20,22 +20,24 @@ void name_waypoints_creation(Liste_pos_waypoints *liste_waypoints, int nb_column
     // Générer Sij pour i de 1 à nb_row et j de 1 à nb_column
     for (int i = 1; i <= nb_row; i++) {
         for (int j = 1; j <= nb_column; j++) {
-            snprintf(buffer, sizeof(buffer), "S%d%d", i, j);
+            snprintf(buffer, sizeof(buffer), "S%d", 2*i*(nb_column+1)+j);
             liste_waypoints->name_waypoints[index++] = strdup(buffer);
         }
     }
     
-    // Ajouter B5 et B15
-    liste_waypoints->name_waypoints[index++] = strdup("B5");
-    liste_waypoints->name_waypoints[index++] = strdup("B15");
+    // Ajouter B(nb_column + 1) et B((nb_column+1) * 3)
+    snprintf(buffer, sizeof(buffer), "B%d", (nb_column + 1));
+    liste_waypoints->name_waypoints[index++] = strdup(buffer);
+    snprintf(buffer, sizeof(buffer), "B%d", (nb_column+1) * 3);
+    liste_waypoints->name_waypoints[index++] = strdup(buffer);
     
-    // Générer P25 à P(25 + 5 * nb_robot - 1)
-    for (int i = 25; i < 25 + 5 * nb_robot; i += 5) {
+    // Générer Px parking
+    for (int i = (nb_column+1) * 5 ; i < (nb_column+1) * 5 + (nb_column+1) * nb_robot; i +=  (nb_column+1)) {
         snprintf(buffer, sizeof(buffer), "P%d", i);
         liste_waypoints->name_waypoints[index++] = strdup(buffer);
     }
     
-    // Ajouter un marqueur de fin (optionnel si nécessaire)
+    // Ajouter un marqueur de fin
     liste_waypoints->name_waypoints[index] = NULL;
 }
 
@@ -83,7 +85,7 @@ void position_waypoints_creation(Liste_pos_waypoints *liste_waypoints, int nb_co
     }
 }
 
-void waypoints_creation (Liste_pos_waypoints *liste_waypoints, Point hedge3, Point hedge4, Point hedge5, int nb_column, int nb_row, int nb_robot){
-    name_waypoints_creation(liste_waypoints,  nb_column,  nb_row,  nb_robot) ; 
-    position_waypoints_creation(liste_waypoints, nb_column, nb_row, nb_robot,   hedge3,  hedge4,  hedge5);
+void waypoints_creation (Liste_pos_waypoints liste_waypoints, Point hedge3, Point hedge4, Point hedge5, int nb_column, int nb_row, int nb_robot){
+    name_waypoints_creation(&liste_waypoints,  nb_column,  nb_row,  nb_robot) ; 
+    position_waypoints_creation(&liste_waypoints, nb_column, nb_row, nb_robot,   hedge3,  hedge4,  hedge5);
 }
