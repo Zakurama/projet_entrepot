@@ -433,6 +433,7 @@ void generate_waypoints(const char current_pos[SIZE_POS],const char pos_finale[S
     
     char type_pos;
     int no_mutex;
+    int no_next_mutex;
 
     // Initialisation du chemin
     char path[MAX_WAYPOINTS][SIZE_POS];
@@ -461,17 +462,48 @@ void generate_waypoints(const char current_pos[SIZE_POS],const char pos_finale[S
         if(type_pos == 'P'){
             CHECK(sem_wait(sem_parking[no_mutex]),"sem_wait(sem_parking)");
         }
-        else if(type_pos == 'B'){
-            CHECK(sem_wait(sem_bac[no_mutex]),"sem_wait(sem_bac)");
-        }
-        else if(type_pos == 'S'){
-            CHECK(sem_wait(sem_lignes[no_mutex]),"sem_wait(sem_lignes)");
-        }
         else if(type_pos == 'D'){
-            CHECK(sem_wait(sem_colonneNord[no_mutex]),"sem_wait(sem_colonneNord)");
+
+            if(path[i+1][0]!='B'){
+                // On demande la mutex pour avancer sur la colonne
+                CHECK(sem_wait(sem_colonneNord[no_mutex]),"sem_wait(sem_colonneNord)");
+            }
+            else{
+                // On doit d'abord demander la mutex pour rentrer dans la zone avec le bac
+                no_next_mutex = get_index_of_waypoint(path[i+1][0],atoi(path[i+1]+1));
+                CHECK(sem_wait(sem_bac[no_next_mutex]),"sem_wait(sem_bac)");
+                // Puis on demande la mutex pour le devant de la zone avec le bac
+                CHECK(sem_wait(sem_colonneNord[no_mutex]),"sem_wait(sem_colonneNord)");
+                // On met à jour les waypoints
+                CHECK(sem_wait(sem_robot),"sem_wait(sem_memoire_robot)");
+                add_waypoint(memoire_robot, path[i]);
+                // On met a jour la position du robot
+                strcpy(memoire_robot->current_pos,path[i]);
+                CHECK(sem_post(sem_robot),"sem_post(sem_memoire_robot)");
+                i++;
+            }
+
         }
         else if(type_pos == 'M'){
-            CHECK(sem_wait(sem_colonneSud[no_mutex]),"sem_wait(sem_colonneSud)");
+
+            if(path[i+1][0]!='S'){
+                // On demande la mutex pour avancer sur la colonne
+                CHECK(sem_wait(sem_colonneSud[no_mutex]),"sem_wait(sem_colonneSud)");
+            }
+            else{
+                // On doit d'abord demander la mutex pour rentrer dans l'allée
+                no_next_mutex = get_index_of_waypoint(path[i+1][0],atoi(path[i+1]+1));
+                CHECK(sem_wait(sem_lignes[no_next_mutex]),"sem_wait(sem_lignes)");
+                // Puis on demande la mutex pour le devant de l'allée                
+                CHECK(sem_wait(sem_colonneSud[no_mutex]),"sem_wait(sem_colonneSud)");
+                // On met à jour les waypoints
+                CHECK(sem_wait(sem_robot),"sem_wait(sem_memoire_robot)");
+                add_waypoint(memoire_robot, path[i]);
+                // On met a jour la position du robot
+                strcpy(memoire_robot->current_pos,path[i]);
+                CHECK(sem_post(sem_robot),"sem_post(sem_memoire_robot)");
+                i++;
+            }
         }
 
         // On met à jour au fur et a mesure la liste des WAIPOINTS du robot
