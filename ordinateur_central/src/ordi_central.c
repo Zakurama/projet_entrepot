@@ -377,7 +377,7 @@ void get_current_and_final_pos(Robot* robot,int no,sem_t* sem_robot,char current
     CHECK(sem_wait(sem_robot),"sem_wait(sem_memoire_robot)");
     if (type_final_pos == 'B'){
         strcpy(current_pos,robot->current_pos);
-        sprintf(pos_finale, "B%d",(NB_COLONNES+1)*(2*no+1));
+        sprintf(pos_finale, "B%d",(NB_COLONNES+1)*(2*no+1)%(NB_BAC*2*(NB_COLONNES+1)));
     }
     else if(type_final_pos == 'P'){
         strcpy(current_pos,robot->current_pos);
