@@ -11,6 +11,8 @@ void trajectoire(const char* pos_initiale, const char* pos_finale, char path[MAX
     int pos_finale_index = atoi(pos_finale + 1);    
     char type_pos_finale = pos_finale[0];
 
+    char holder_name_place[SIZE_POS];
+
     // On vérifie que les positions données sont cohérentes
     if(!(((type_pos=='S') && (pos_index%(NB_COLONNES + 1) != 0) && (pos_index % (2*(NB_COLONNES + 1))<(NB_COLONNES + 1)) ) || (type_pos!='S' && pos_index % (NB_COLONNES + 1) == 0))){
         printf("La position initiale donnée (%s) est non cohérente. Si de type S : ne doit pas être mutliple de %d, sinon doit être mutliple de %d\nSi de type S, il faut aussi que pos_initiale_index mod %d<%d\n",pos_initiale,NB_COLONNES + 1,NB_COLONNES + 1,2*(NB_COLONNES + 1),NB_COLONNES + 1);
@@ -25,20 +27,16 @@ void trajectoire(const char* pos_initiale, const char* pos_finale, char path[MAX
     int i = 1;
 
     if(type_pos=='B'){
-        // Si le début c'est un bac alors on retourne en PXX avant de repartir
-        if(pos_index == 5){
-            // On s'avance sur le deuxième bac
-            strcpy(path[i], "B15");
-            i++;
-        }
-        strcpy(path[i], "P25");
+        // Si on est dans le bac alors on ressort sur la colonne de descente
+        sprintf(holder_name_place, "D%d", pos_index);
+        strcpy(path[i], holder_name_place);
         i++;
-        type_pos = 'P';
-        pos_index = 25;
+        type_pos = 'D';
     }
     
     while (pos_index!=pos_finale_index || type_pos!=type_pos_finale){
-        char holder_name_place[SIZE_POS];
+        
+        holder_name_place[0] = '\0';
         
         if(type_pos == 'P'){
             // On est au parking
@@ -454,9 +452,6 @@ void generate_waypoints(const char current_pos[SIZE_POS],const char pos_finale[S
         type_pos = path[i][0];
         no_mutex = get_index_of_waypoint(type_pos,atoi(path[i]+1));
         
-        // On se met sur la file d'attente
-        // Tant que ce n'est pas mon tour j'attend
-        // TODO
 
         // C'est mon tour, je demande la mutex
         if(type_pos == 'P'){
@@ -465,6 +460,7 @@ void generate_waypoints(const char current_pos[SIZE_POS],const char pos_finale[S
         else if(type_pos == 'D'){
 
             if(path[i+1][0]!='B'){
+
                 // On demande la mutex pour avancer sur la colonne
                 CHECK(sem_wait(sem_colonneNord[no_mutex]),"sem_wait(sem_colonneNord)");
             }
@@ -487,6 +483,7 @@ void generate_waypoints(const char current_pos[SIZE_POS],const char pos_finale[S
         else if(type_pos == 'M'){
 
             if(path[i+1][0]!='S'){
+                // Je ne fais que passer
                 // On demande la mutex pour avancer sur la colonne
                 CHECK(sem_wait(sem_colonneSud[no_mutex]),"sem_wait(sem_colonneSud)");
             }

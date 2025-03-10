@@ -79,16 +79,16 @@ void test_trajectoire_P25_B5() {
 
 void test_trajectoire_B5_P25() {
     char expected[MAX_WAYPOINTS][SIZE_POS] = {
-        "B5", "B15", "P25"
+        "B5",  "D5",  "D10",  "D15",  "D20",  "D25",  "P25"
     };
     test_trajectoire_generique("B5", "P25", expected);
 }
 
-void test_trajectoire_B15_P25() {
+void test_trajectoire_B15_P30() {
     char expected[MAX_WAYPOINTS][SIZE_POS] = {
-        "B15", "P25"
+        "B15",  "D15",  "D20",  "D25", "D30",  "P30" 
     };
-    test_trajectoire_generique("B15", "P25", expected);
+    test_trajectoire_generique("B15", "P30", expected);
 }
 
 void test_trajectoire_D30_B15() {
@@ -504,7 +504,7 @@ int main() {
     CU_add_test(suite, "Trajectoire de S14 à P25", test_trajectoire_S14_P25);
     CU_add_test(suite, "Trajectoire de P25 à B5", test_trajectoire_P25_B5);
     CU_add_test(suite, "Trajectoire de B5 à P25", test_trajectoire_B5_P25);
-    CU_add_test(suite, "Trajectoire de B15 à P25", test_trajectoire_B15_P25);
+    CU_add_test(suite, "Trajectoire de B15 à P30", test_trajectoire_B15_P30);
     CU_add_test(suite, "Trajectoire de D30 à B15", test_trajectoire_D30_B15);
     CU_add_test(suite, "Trajectoire de S11 à B15", test_trajectoire_S11_B15);
     
