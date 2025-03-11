@@ -1,9 +1,9 @@
 #include "inventaire.h"
 
 int main(int argc, char *argv[]) {
-    int nb_columns = 5;
-    int nb_rows = 5;
-    const char *item_placement = "5_1.1,5_2.2";
+    int nb_columns = 4;
+    int nb_rows = 4;
+    const char *item_placement = "4_1.1,4_2.2";
     int nb_items = 2;
     const int max_item_name_size= 500;
 
@@ -51,6 +51,8 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
+    sleep(0.5);
+    
     snprintf(message, sizeof(message), "columns,%d", nb_columns);
     send_message(computer_sd, message);
     recev_message(computer_sd, message);

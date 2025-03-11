@@ -163,7 +163,7 @@ void trajectoire(const char* pos_initiale, const char* pos_finale, char path[MAX
                     strcpy(path[i], holder_name_place);
                 }
                 else{
-                    sprintf(holder_name_place, "M%d", pos_index - (NB_COLONNES + 1));
+                    sprintf(holder_name_place, "M%d", pos_index - (nb_colonnes + 1));
                     strcpy(path[i], holder_name_place);
                 }
             }
@@ -220,7 +220,7 @@ char* convert_request_strings_to_lists(char *buffer_reception_ID_articles, char 
     return NULL;
 }
 
-void update_shared_memory_stock(Robot *robot, Item_selected selected_item, int index_pos) {
+void update_shared_memory_stock(Robot *robot, Item_selected selected_item, int index_pos,int nb_colonnes) {
     // Vérifier si index_pos est valide
     if (index_pos < 0 || index_pos >= selected_item.count) {
         printf("Erreur : index_pos hors limites.\n");
@@ -244,8 +244,7 @@ void update_shared_memory_stock(Robot *robot, Item_selected selected_item, int i
     robot->item_name[idx][NAME_ITEM_SIZE - 1] = '\0';  // Assurez-vous que le nom est bien null-terminé
 
     // Allouer et copier les positions
-    robot->positions[idx][0] = selected_item.positions[index_pos][0] + 1;
-    robot->positions[idx][1] = selected_item.positions[index_pos][1] + 1;
+    robot->positions[idx] = (nb_colonnes+1)*2*(selected_item.positions[index_pos][0]+1) + selected_item.positions[index_pos][1] + 1;
 
     // Copier la quantité
     robot->quantities[idx] = selected_item.quantities[index_pos];
@@ -308,8 +307,8 @@ void print_robot_state(Robot* robot){
     for (int i = 0; i < MAX_WAYPOINTS; i++) {
         if (strcmp(robot->item_name[i],"\0"))
             printf("  - Item: %s\n", robot->item_name[i]);
-        if (robot->positions[i][0] != 0 && robot->positions[i][1] != 0)
-            printf("  - Position: (%d, %d)\n", robot->positions[i][0], robot->positions[i][1]);
+        if (robot->positions[i] != 0)
+            printf("  - Position: (%d)\n", robot->positions[i]);
         if (robot->quantities[i] != 0)
             printf("  - Quantity: %d\n", robot->quantities[i]);
         if (strcmp(robot->waypoints[i],"\0"))
@@ -375,43 +374,43 @@ void remove_first_waypoint_of_robot(Robot *robot) {
     robot->waypoints[MAX_WAYPOINTS - 1][0] = '\0';
 }
 
-void get_current_and_final_pos(Robot* robot,int no,sem_t* sem_robot,char current_pos[SIZE_POS],char pos_finale[SIZE_POS],char type_final_pos){
+void get_current_and_final_pos(Robot* robot,int no,sem_t* sem_robot,char current_pos[SIZE_POS],char pos_finale[SIZE_POS],char type_final_pos,int nb_colonnes,int nb_bac){
     
     CHECK(sem_wait(sem_robot),"sem_wait(sem_memoire_robot)");
     if (type_final_pos == 'B'){
         strcpy(current_pos,robot->current_pos);
-        sprintf(pos_finale, "B%d",(NB_COLONNES+1)*(2*no+1)%(NB_BAC*2*(NB_COLONNES+1)));
+        sprintf(pos_finale, "B%d",(nb_colonnes+1)*(2*no+1)%(nb_bac*2*(nb_colonnes+1)));
     }
     else if(type_final_pos == 'P'){
         strcpy(current_pos,robot->current_pos);
-        sprintf(pos_finale, "P%d",(2*NB_BAC+no+1)*(NB_COLONNES+1));
+        sprintf(pos_finale, "P%d",(2*nb_bac+no+1)*(nb_colonnes+1));
     }
     else if(type_final_pos == 'S'){
         strcpy(current_pos,robot->current_pos);
-        sprintf(pos_finale, "S%d%d",robot->positions[0][0],robot->positions[0][1]);
+        sprintf(pos_finale, "S%d",robot->positions[0]);
     }
     CHECK(sem_post(sem_robot),"sem_post(sem_memoire_robot)");
 
 }
 
-int get_index_of_waypoint(char type_pos,int no_pos){
+int get_index_of_waypoint(char type_pos,int no_pos,int nb_colonnes,int nb_bac){
     // Retourne l'index de la liste de mutex correspondant d'un waypoint
     if(type_pos == 'P'){
-        return no_pos/(NB_COLONNES+1) -1 -2*NB_BAC;
+        return no_pos/(nb_colonnes+1) -1 -2*nb_bac;
     }
     else if(type_pos == 'B'){
-        return (no_pos/(NB_COLONNES+1)-1)/2;
+        return (no_pos/(nb_colonnes+1)-1)/2;
     }
     else if(type_pos == 'S'){
-        return no_pos/(2*(NB_COLONNES+1)) -1;
+        return no_pos/(2*(nb_colonnes+1)) -1;
     }
     else if(type_pos == 'D' || type_pos == 'M'){
-        return no_pos/(NB_COLONNES+1) -1;
+        return no_pos/(nb_colonnes+1) -1;
     }
     return -1;
 }
 
-void free_mutex(char type_pos,int no_mutex,sem_t* sem_bac[NB_BAC],sem_t* sem_parking[NB_ROBOT],sem_t* sem_lignes[NB_LIGNES],sem_t* sem_colonneNord[2*NB_LIGNES],sem_t* sem_colonneSud[2*NB_LIGNES]){
+void free_mutex(char type_pos,int no_mutex,sem_t* sem_bac[NB_MAX_BAC],sem_t* sem_parking[NB_MAX_ROBOT],sem_t* sem_lignes[NB_MAX_LIGNES],sem_t* sem_colonneNord[2*NB_MAX_LIGNES],sem_t* sem_colonneSud[2*NB_MAX_LIGNES]){
     if(type_pos == 'P'){
         CHECK(sem_post(sem_parking[no_mutex]),"sem_post(sem_parking)");
     }
@@ -429,7 +428,7 @@ void free_mutex(char type_pos,int no_mutex,sem_t* sem_bac[NB_BAC],sem_t* sem_par
     }
 }
 
-void generate_waypoints(const char current_pos[SIZE_POS],const char pos_finale[SIZE_POS],Robot* memoire_robot, sem_t* sem_robot,sem_t* sem_bac[NB_BAC],sem_t* sem_parking[NB_ROBOT],sem_t* sem_lignes[NB_LIGNES],sem_t* sem_colonneNord[2*NB_LIGNES],sem_t* sem_colonneSud[2*NB_LIGNES]){
+void generate_waypoints(const char current_pos[SIZE_POS],const char pos_finale[SIZE_POS],Robot* memoire_robot, sem_t* sem_robot,sem_t* sem_bac[NB_MAX_BAC],sem_t* sem_parking[NB_MAX_ROBOT],sem_t* sem_lignes[NB_MAX_LIGNES],sem_t* sem_colonneNord[2*NB_MAX_LIGNES],sem_t* sem_colonneSud[2*NB_MAX_LIGNES],int nb_lignes, int nb_colonnes,int nb_bac){
     // Fonction qui détermine la trajectoire, demande les ressources associées et met à jour une structure
     
     char type_pos;
@@ -443,7 +442,7 @@ void generate_waypoints(const char current_pos[SIZE_POS],const char pos_finale[S
     }
 
     // On détermine la trajectoire
-    trajectoire(current_pos, pos_finale, path);
+    trajectoire(current_pos, pos_finale, path,nb_lignes,nb_colonnes);
 
     // On boucle pour demander les mutex dans l'ordre
     for (int i = 1; i < MAX_WAYPOINTS; i++) { // Commence à 1 car le premier point de la trajectoire (la position courante) ne nous intéresse pas
@@ -453,7 +452,7 @@ void generate_waypoints(const char current_pos[SIZE_POS],const char pos_finale[S
 
         // Identification de la mutex correspondante
         type_pos = path[i][0];
-        no_mutex = get_index_of_waypoint(type_pos,atoi(path[i]+1));
+        no_mutex = get_index_of_waypoint(type_pos,atoi(path[i]+1),nb_colonnes,nb_bac);
         
 
         // C'est mon tour, je demande la mutex
@@ -469,7 +468,7 @@ void generate_waypoints(const char current_pos[SIZE_POS],const char pos_finale[S
             }
             else{
                 // On doit d'abord demander la mutex pour rentrer dans la zone avec le bac
-                no_next_mutex = get_index_of_waypoint(path[i+1][0],atoi(path[i+1]+1));
+                no_next_mutex = get_index_of_waypoint(path[i+1][0],atoi(path[i+1]+1),nb_colonnes,nb_bac);
                 CHECK(sem_wait(sem_bac[no_next_mutex]),"sem_wait(sem_bac)");
                 // Puis on demande la mutex pour le devant de la zone avec le bac
                 CHECK(sem_wait(sem_colonneNord[no_mutex]),"sem_wait(sem_colonneNord)");
@@ -492,7 +491,7 @@ void generate_waypoints(const char current_pos[SIZE_POS],const char pos_finale[S
             }
             else{
                 // On doit d'abord demander la mutex pour rentrer dans l'allée
-                no_next_mutex = get_index_of_waypoint(path[i+1][0],atoi(path[i+1]+1));
+                no_next_mutex = get_index_of_waypoint(path[i+1][0],atoi(path[i+1]+1),nb_colonnes,nb_bac);
                 CHECK(sem_wait(sem_lignes[no_next_mutex]),"sem_wait(sem_lignes)");
                 // Puis on demande la mutex pour le devant de l'allée                
                 CHECK(sem_wait(sem_colonneSud[no_mutex]),"sem_wait(sem_colonneSud)");
@@ -523,15 +522,13 @@ void remove_first_item_of_robot(Robot *robot) {
     
     for (int i = 0; i < MAX_WAYPOINTS - 1; i++) {
         strncpy(robot->item_name[i], robot->item_name[i + 1], NAME_ITEM_SIZE);
-        robot->positions[i][0] = robot->positions[i + 1][0];
-        robot->positions[i][1] = robot->positions[i + 1][1];
+        robot->positions[i] = robot->positions[i + 1];
         robot->quantities[i] = robot->quantities[i + 1];
     }
     
     // Vider le dernier élément
     robot->item_name[MAX_WAYPOINTS - 1][0] = '\0';
-    robot->positions[MAX_WAYPOINTS - 1][0] = 0;
-    robot->positions[MAX_WAYPOINTS - 1][1] = 0;
+    robot->positions[MAX_WAYPOINTS - 1] = 0;
     robot->quantities[MAX_WAYPOINTS - 1] = 0;
 }
 

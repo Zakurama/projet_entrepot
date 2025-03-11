@@ -43,4 +43,5 @@ typedef struct {
 
 void name_waypoints_creation(Liste_pos_waypoints *liste_waypoints, int nb_column, int nb_row, int nb_robot) ;
 void position_waypoints_creation(Liste_pos_waypoints *liste_waypoints, int nb_column, int nb_row, int nb_robot, Point hedge3, Point hedge4, Point hedge5) ; 
-void waypoints_creation (Liste_pos_waypoints liste_waypoints, Point hedge3, Point hedge4, Point hedge5, int nb_column, int nb_row, int nb_robot); 
+void waypoints_creation (Liste_pos_waypoints* liste_waypoints, Point hedge3, Point hedge4, Point hedge5, int nb_column, int nb_row, int nb_robot);
+int find_waypoint(const Liste_pos_waypoints *liste, const char *name, Point *result);

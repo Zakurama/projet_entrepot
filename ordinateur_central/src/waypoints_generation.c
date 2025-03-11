@@ -85,7 +85,17 @@ void position_waypoints_creation(Liste_pos_waypoints *liste_waypoints, int nb_co
     }
 }
 
-void waypoints_creation (Liste_pos_waypoints liste_waypoints, Point hedge3, Point hedge4, Point hedge5, int nb_column, int nb_row, int nb_robot){
-    name_waypoints_creation(&liste_waypoints,  nb_column,  nb_row,  nb_robot) ; 
-    position_waypoints_creation(&liste_waypoints, nb_column, nb_row, nb_robot,   hedge3,  hedge4,  hedge5);
+void waypoints_creation (Liste_pos_waypoints* liste_waypoints, Point hedge3, Point hedge4, Point hedge5, int nb_column, int nb_row, int nb_robot){
+    name_waypoints_creation(liste_waypoints,  nb_column,  nb_row,  nb_robot) ; 
+    position_waypoints_creation(liste_waypoints, nb_column, nb_row, nb_robot,   hedge3,  hedge4,  hedge5);
+}
+
+int find_waypoint(const Liste_pos_waypoints *liste, const char *name, Point *result) {
+    for (int i = 0; i < MAX_WAYPOINTS; i++) {
+        if (strcmp(liste->name_waypoints[i], name) == 0) {
+            *result = liste->pos_waypoints[i];
+            return 1; // Trouvé
+        }
+    }
+    return 0; // Non trouvé
 }
