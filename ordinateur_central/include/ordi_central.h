@@ -18,14 +18,14 @@
 #include <semaphore.h>
 #include <sys/mman.h>
 
-#define SIZE_POS 10
-#define NB_MAX_ROBOT 10
+#include "waypoints_generation.h"
+
+#define NB_MAX_ROBOT 2
 #define DEFAULT_NB_COLONNES 4
 #define DEFAULT_NB_LIGNES 4
 #define MAX_ARTICLES_PORTES 2
 #define MAX_ARTICLES_LISTE_ATTENTE 10
 #define MAX_ESPACE_STOCK 100
-#define MAX_WAYPOINTS 100
 
 extern int *nb_colonnes;
 extern int *nb_lignes;
@@ -40,11 +40,10 @@ typedef struct {
 typedef struct {
     int ID;
     int waypoints[MAX_WAYPOINTS];
-    
+    Point * pos_waypoints[MAX_WAYPOINTS]; 
     char *item_name[MAX_WAYPOINTS];
     int *positions[MAX_WAYPOINTS];
     int *quantities[MAX_WAYPOINTS];
-
 } Robot;
 
 void trajectoire(const char* pos_initiale, const char* pos_finale, char path[MAX_WAYPOINTS][SIZE_POS], int nb_lignes, int nb_colonnes);

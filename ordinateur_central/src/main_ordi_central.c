@@ -27,7 +27,12 @@ Robot* robots[NB_MAX_ROBOT];
 
 sem_t* sem_memoire_robot[NB_MAX_ROBOT];
 
+int shm_liste_waypoints;
+size_t size_liste_waypoints = sizeof(Liste_pos_waypoints);
+Liste_pos_waypoints * liste_waypoints; 
+
 int main(int argc, char *argv[]) {
+
 
     if(argc == 2){
         strncpy(ip, argv[1], IP_SIZE - 1);
@@ -68,6 +73,14 @@ int main(int argc, char *argv[]) {
         CHECK_S(sem_memoire_robot[i] = sem_open(mutex_name,O_CREAT|O_EXCL,0666,1),"sem_open(sem_memoire_robot)");
 
     }
+
+    // Création de la mémoire partagée pour la liste de waypoints
+
+    CHECK(shm_liste_waypoints = shm_open("liste_waypoints", O_CREAT | O_RDWR, 0666),"shm_open(shm_liste_waypoints)");
+    CHECK(ftruncate(shm_liste_waypoints, size_liste_waypoints),"ftruncate(shm_liste_waypoints)");
+    CHECK_MAP(liste_waypoints = mmap(0, size_liste_waypoints, PROT_READ | PROT_WRITE, MAP_SHARED, shm_liste_waypoints, 0),"mmap");
+
+    waypoints_creation(*liste_waypoints, DEFAULT_HEDGE_3, DEFAULT_HEDGE_4, DEFAULT_HEDGE_5, *nb_colonnes, *nb_lignes, NB_MAX_ROBOT);
 
     // Permet de faire le cleanning des sémaphores lors des exits
     atexit(bye);// bye detruit les semaphores
@@ -130,6 +143,11 @@ void bye(){
         CHECK(sem_close(sem_memoire_robot[i]),"sem_close(sem_memoire_robot)");
         CHECK(sem_unlink(mutex_name),"sem_unlink(sem_memoire_robot)");
     }
+
+    CHECK(munmap(liste_waypoints, size_liste_waypoints),"munmap(robots_data)");
+    CHECK(close(shm_liste_waypoints),"close(shm_liste_waypoints)");
+    CHECK(shm_unlink("liste_waypoints"),"shm_unlink(liste_waypoints)");
+
 }
 
 void gestionnaire_inventaire(int client_sd){
@@ -170,9 +188,12 @@ void gestionnaire_inventaire(int client_sd){
         if (strcmp(size_type, "rows") == 0) {
             // Modification du nombre de lignes
             *nb_lignes = new_size;
+             waypoints_creation (*liste_waypoints, DEFAULT_HEDGE_3, DEFAULT_HEDGE_4, DEFAULT_HEDGE_5, *nb_colonnes, *nb_lignes, NB_MAX_ROBOT);
+
         } else if (strcmp(size_type, "columns") == 0) {
             // Modification du nombre de colonnes
             *nb_colonnes = new_size;
+             waypoints_creation (*liste_waypoints, DEFAULT_HEDGE_3, DEFAULT_HEDGE_4, DEFAULT_HEDGE_5, *nb_colonnes, *nb_lignes, NB_MAX_ROBOT);
         }
         else {
             strcpy(buffer_emission, "Invalid size type");

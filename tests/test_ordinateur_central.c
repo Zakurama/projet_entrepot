@@ -485,6 +485,30 @@ void test_create_inventory_string_single_item(void) {
 
 }
 
+void test_name_waypoints_creation(void){
+    Liste_pos_waypoints liste_waypoints;
+    name_waypoints_creation(&liste_waypoints, 2, 3, 2);
+
+    int total_length = 0;
+    
+    for (int i = 0; liste_waypoints.name_waypoints[i][0] != '\0'; i++) 
+    {
+        total_length += strlen(liste_waypoints.name_waypoints[i]); 
+    }
+
+    CU_ASSERT(total_length != 0);    
+
+    char buffer[MAX_WAYPOINTS];
+
+    int i = 0; 
+    for (i=0; liste_waypoints.name_waypoints[i][0] != '\0'; i++) {
+        strcat(buffer, liste_waypoints.name_waypoints[i]);
+    }
+
+    CU_ASSERT(i == 22); //nb_waypoints
+    CU_ASSERT_STRING_EQUAL(buffer, "M3M6M9M12M15M18D3D6D9D12D15D18S7S8S13S14S19S20B3B9P15P18");   
+}   
+
 int main() {
     CU_initialize_registry();
 
@@ -552,6 +576,11 @@ int main() {
     }
 
     if (NULL == CU_add_test(suite, "test select item in stocks", test_selection_items)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
+     if (NULL == CU_add_test(suite, "test name waypoints invalid", test_name_waypoints_creation)) {
         CU_cleanup_registry();
         return CU_get_error();
     }
