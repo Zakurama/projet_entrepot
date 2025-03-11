@@ -489,27 +489,22 @@ void test_name_waypoints_creation(void){
 
     int total_length = 0;
     
-    for (int i = 0; liste_waypoints.name_waypoints[i] != NULL; i++) 
+    for (int i = 0; liste_waypoints.name_waypoints[i][0] != '\0'; i++) 
     {
         total_length += strlen(liste_waypoints.name_waypoints[i]); 
     }
 
     CU_ASSERT(total_length != 0);    
 
-    char *buffer = (char *)malloc(total_length * sizeof(char));
-    buffer[0] = '\0';  
+    char buffer[MAX_WAYPOINTS];
 
     int i = 0; 
-    for (i=0; liste_waypoints.name_waypoints[i] != NULL; i++) {
+    for (i=0; liste_waypoints.name_waypoints[i][0] != '\0'; i++) {
         strcat(buffer, liste_waypoints.name_waypoints[i]);
-        free(liste_waypoints.name_waypoints[i]);  // Libérer la mémoire
     }
 
     CU_ASSERT(i == 22); //nb_waypoints
-    CU_ASSERT_STRING_EQUAL(buffer, "M3M6M9M12M15M18D3D6D9D12D15D18S7S8S13S14S19S20B3B9P15P18");
-
-    free(buffer);
-   
+    CU_ASSERT_STRING_EQUAL(buffer, "M3M6M9M12M15M18D3D6D9D12D15D18S7S8S13S14S19S20B3B9P15P18");   
 }   
 
 int main() {

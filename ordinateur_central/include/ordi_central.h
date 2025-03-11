@@ -20,7 +20,6 @@
 
 #include "waypoints_generation.h"
 
-#define SIZE_POS 10
 #define NB_ROBOT 2
 #define DEFAULT_NB_COLONNES 4
 #define DEFAULT_NB_LIGNES 4
