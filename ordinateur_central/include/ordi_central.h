@@ -20,7 +20,7 @@
 
 #include "waypoints_generation.h"
 
-#define NB_MAX_ROBOT 2
+#define NB_MAX_ROBOT 10
 #define DEFAULT_NB_COLONNES 4
 #define DEFAULT_NB_LIGNES 4
 #define MAX_ARTICLES_PORTES 2
@@ -54,4 +54,6 @@ char* convert_request_strings_to_lists(char *buffer_reception_ID_articles, char 
 void print_robot_state(Robot* robot);
 void convert_items_to_lists(Item_selected *selected_items, int num_items,char *chosen_item_names[MAX_ARTICLES_LISTE_ATTENTE],int *chosen_x_positions[MAX_ARTICLES_LISTE_ATTENTE],int *chosen_y_positions[MAX_ARTICLES_LISTE_ATTENTE],int *chosen_quantities[MAX_ARTICLES_LISTE_ATTENTE],int chosen_counts[MAX_ARTICLES_LISTE_ATTENTE]);
 char *create_inventory_string(int nb_items, int max_elements, int count[max_elements], int *L_n[max_elements], int *L_x[max_elements], int *L_y[max_elements], char *item_names[max_elements]);
+int authorize_robot_connexion(char *file_name, char *robot_ip);
+void gestion_flotte(int *nb_robots, char *ip);
 #endif
