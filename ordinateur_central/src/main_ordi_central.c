@@ -4,11 +4,10 @@
 
 #define IP_SIZE 16
 #define DEFAULT_LOCALIP "127.0.0.1"
-#define LOCAL_IP "127.0.0.1"
 #define LOCAL_PORT 5000
 #define PORT_ROBOT 8000
 
-char ip[IP_SIZE];
+char ip[IP_SIZE+1];
 
 void bye();
 
@@ -26,12 +25,12 @@ sem_t* sem_memoire_robot[NB_MAX_ROBOT];
 int main(int argc, char *argv[]) {
 
     if(argc == 2){
-        strncpy(ip, argv[1], IP_SIZE - 1);
-        ip[IP_SIZE - 1] = '\0';
+        strncpy(ip, argv[1], IP_SIZE);
+        ip[IP_SIZE] = '\0';
     }
     else{
-        strncpy(ip, DEFAULT_LOCALIP, IP_SIZE - 1);
-        ip[IP_SIZE - 1] = '\0';
+        strncpy(ip, DEFAULT_LOCALIP, IP_SIZE);
+        ip[IP_SIZE] = '\0';
     }
 
     int *nb_robots;
@@ -76,8 +75,8 @@ int main(int argc, char *argv[]) {
             CHECK(sigprocmask(SIG_SETMASK , &OldMask , NULL), "sigprocmask()");
             if(i==0){
                 // Gestionnaire communication inventaire
-                int se_inventaire = 0; // la définir au préalable
-                init_tcp_socket(&se_inventaire,LOCAL_IP,LOCAL_PORT,1);
+                int se_inventaire = 0;
+                init_tcp_socket(&se_inventaire, ip, LOCAL_PORT, 1);
                 listen_to(se_inventaire);
                 int client_sd = accept_client(se_inventaire);
                 while(1){
@@ -86,7 +85,7 @@ int main(int argc, char *argv[]) {
             }
             if(i==1){
                 // Processus de gestion de la flotte de robots
-                gestion_flotte(nb_robots);
+                gestion_flotte(nb_robots, ip);
             }
 
         }
@@ -214,9 +213,9 @@ void gestionnaire_inventaire(int client_sd){
 
 }
 
-void gestion_flotte(int *nb_robots){
+void gestion_flotte(int *nb_robots, char *ip){
     int se;
-    init_tcp_socket(&se,LOCAL_IP,PORT_ROBOT,1);
+    init_tcp_socket(&se, ip, PORT_ROBOT, 1);
     listen(se, MAXCLIENTS);
 
     while (1){
@@ -256,14 +255,14 @@ void gestion_flotte(int *nb_robots){
 }
 
 void gestionnaire_traj_robot(int no){
-    while(1);
+    while(1) pause();
     // Faite par Thibaud
 }
 
 void gestion_communication_robot(int no, int se, int *nb_robots){
     printf("Robot %d connected\n", no);
     printf("Nombre de robots connectés : %d\n", *nb_robots);
-    while(1);
+    while(1) pause();
     // Faite par Thibaud et Marion
 
     // penser à faire diminuer le nombre de robots lorsqu'un robot se déconnecte
