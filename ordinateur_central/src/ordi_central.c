@@ -3,10 +3,7 @@
 #include "tcp.h"
 #include "inventaire.h"
 
-int nb_colonnes = DEFAULT_NB_COLONNES;
-int nb_lignes = DEFAULT_NB_LIGNES;
-
-void trajectoire(const char* pos_initiale, const char* pos_finale, char path[MAX_WAYPOINTS][SIZE_POS]){
+void trajectoire(const char* pos_initiale, const char* pos_finale, char path[MAX_WAYPOINTS][SIZE_POS], int nb_lignes, int nb_colonnes){
 
     int pos_index = atoi(pos_initiale+1);
     char type_pos = pos_initiale[0];

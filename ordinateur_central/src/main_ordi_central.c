@@ -7,14 +7,18 @@
 #define LOCAL_PORT 5000
 #define PORT_ROBOT 8000
 
-char ip[IP_SIZE+1];
+char ip[IP_SIZE];
 
 void bye();
 
 void gestionnaire_inventaire(int client_sd);
+void gestion_flotte(int *nb_robots, char *ip);
 
 void gestion_communication_robot(int no, int se, int *nb_robots);
 void gestionnaire_traj_robot(int no);
+
+int *nb_colonnes;
+int *nb_lignes;
 
 int shm[NB_MAX_ROBOT];
 size_t size_robot = sizeof(Robot);
@@ -22,7 +26,12 @@ Robot* robots[NB_MAX_ROBOT];
 
 sem_t* sem_memoire_robot[NB_MAX_ROBOT];
 
+int shm_liste_waypoints;
+size_t size_liste_waypoints = sizeof(Liste_pos_waypoints);
+Liste_pos_waypoints * liste_waypoints; 
+
 int main(int argc, char *argv[]) {
+
 
     if(argc == 2){
         strncpy(ip, argv[1], IP_SIZE);
@@ -33,12 +42,29 @@ int main(int argc, char *argv[]) {
         ip[IP_SIZE] = '\0';
     }
 
+    // Mémoire partagée pour le nombre de robot
     int *nb_robots;
     int shm_nb_robots;
     CHECK(shm_nb_robots = shm_open("nb_robots", O_CREAT | O_RDWR, 0666), "shm_open(nb_robots)");
     CHECK(ftruncate(shm_nb_robots, sizeof(int)), "ftruncate(shm_nb_robots)");
     CHECK_MAP(nb_robots = mmap(0, sizeof(int), PROT_READ | PROT_WRITE, MAP_SHARED, shm_nb_robots, 0), "mmap(nb_robots)");
     *nb_robots = 0;
+
+    // Create shared memory for nb_colonnes and nb_lignes
+    int shm_colonnes, shm_lignes;
+    size_t size_int = sizeof(int);
+
+    CHECK(shm_colonnes = shm_open("nb_colonnes", O_CREAT | O_RDWR, 0666), "shm_open(nb_colonnes)");
+    CHECK(ftruncate(shm_colonnes, size_int), "ftruncate(shm_colonnes)");
+    CHECK_MAP(nb_colonnes = mmap(0, size_int, PROT_READ | PROT_WRITE, MAP_SHARED, shm_colonnes, 0), "mmap(nb_colonnes)");
+
+    CHECK(shm_lignes = shm_open("nb_lignes", O_CREAT | O_RDWR, 0666), "shm_open(nb_lignes)");
+    CHECK(ftruncate(shm_lignes, size_int), "ftruncate(shm_lignes)");
+    CHECK_MAP(nb_lignes = mmap(0, size_int, PROT_READ | PROT_WRITE, MAP_SHARED, shm_lignes, 0), "mmap(nb_lignes)");
+
+    // Initialize shared memory values
+    *nb_colonnes = DEFAULT_NB_COLONNES;
+    *nb_lignes = DEFAULT_NB_LIGNES;
 
     char nom_memoire[20];
     char mutex_name[30];
@@ -54,6 +80,14 @@ int main(int argc, char *argv[]) {
         CHECK_S(sem_memoire_robot[i] = sem_open(mutex_name,O_CREAT|O_EXCL,0666,1),"sem_open(sem_memoire_robot)");
 
     }
+
+    // Création de la mémoire partagée pour la liste de waypoints
+
+    CHECK(shm_liste_waypoints = shm_open("liste_waypoints", O_CREAT | O_RDWR, 0666),"shm_open(shm_liste_waypoints)");
+    CHECK(ftruncate(shm_liste_waypoints, size_liste_waypoints),"ftruncate(shm_liste_waypoints)");
+    CHECK_MAP(liste_waypoints = mmap(0, size_liste_waypoints, PROT_READ | PROT_WRITE, MAP_SHARED, shm_liste_waypoints, 0),"mmap");
+
+    waypoints_creation(*liste_waypoints, DEFAULT_HEDGE_3, DEFAULT_HEDGE_4, DEFAULT_HEDGE_5, *nb_colonnes, *nb_lignes, NB_MAX_ROBOT);
 
     // Permet de faire le cleanning des sémaphores lors des exits
     atexit(bye);// bye detruit les semaphores
@@ -98,7 +132,7 @@ int main(int argc, char *argv[]) {
         CHECK(wait(&status), "wait()");
     }
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 
 void bye(){
@@ -116,6 +150,11 @@ void bye(){
         CHECK(sem_close(sem_memoire_robot[i]),"sem_close(sem_memoire_robot)");
         CHECK(sem_unlink(mutex_name),"sem_unlink(sem_memoire_robot)");
     }
+
+    CHECK(munmap(liste_waypoints, size_liste_waypoints),"munmap(robots_data)");
+    CHECK(close(shm_liste_waypoints),"close(shm_liste_waypoints)");
+    CHECK(shm_unlink("liste_waypoints"),"shm_unlink(liste_waypoints)");
+
 }
 
 void gestionnaire_inventaire(int client_sd){
@@ -155,10 +194,13 @@ void gestionnaire_inventaire(int client_sd){
     if (sscanf(buffer_reception_ID_articles, "%[^,],%d", size_type, &new_size) == 2) {
         if (strcmp(size_type, "rows") == 0) {
             // Modification du nombre de lignes
-            nb_lignes = new_size;
+            *nb_lignes = new_size;
+             waypoints_creation (*liste_waypoints, DEFAULT_HEDGE_3, DEFAULT_HEDGE_4, DEFAULT_HEDGE_5, *nb_colonnes, *nb_lignes, NB_MAX_ROBOT);
+
         } else if (strcmp(size_type, "columns") == 0) {
             // Modification du nombre de colonnes
-            nb_colonnes = new_size;
+            *nb_colonnes = new_size;
+             waypoints_creation (*liste_waypoints, DEFAULT_HEDGE_3, DEFAULT_HEDGE_4, DEFAULT_HEDGE_5, *nb_colonnes, *nb_lignes, NB_MAX_ROBOT);
         }
         else {
             strcpy(buffer_emission, "Invalid size type");

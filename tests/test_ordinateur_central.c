@@ -16,7 +16,9 @@ void test_trajectoire_generique(const char *pos_initiale, const char *pos_finale
         path[i][0] = '\0';  // Mettre une chaîne vide
     }
 
-    trajectoire(pos_initiale, pos_finale, path);
+    int nb_colonnes = 4;
+    int nb_lignes = 4;
+    trajectoire(pos_initiale, pos_finale, path, nb_lignes, nb_colonnes);
 
     for (int i = 0; i < MAX_WAYPOINTS; i++) {
         if (expected[i][0] == '\0' && path[i][0] == '\0') {
@@ -541,6 +543,29 @@ void test_authorize_robot_connexion_empty_file(void) {
     // Remove the temporary file
     remove(file_name);
 }
+void test_name_waypoints_creation(void){
+    Liste_pos_waypoints liste_waypoints;
+    name_waypoints_creation(&liste_waypoints, 2, 3, 2);
+
+    int total_length = 0;
+    
+    for (int i = 0; liste_waypoints.name_waypoints[i][0] != '\0'; i++) 
+    {
+        total_length += strlen(liste_waypoints.name_waypoints[i]); 
+    }
+
+    CU_ASSERT(total_length != 0);    
+
+    char buffer[MAX_WAYPOINTS];
+
+    int i = 0; 
+    for (i=0; liste_waypoints.name_waypoints[i][0] != '\0'; i++) {
+        strcat(buffer, liste_waypoints.name_waypoints[i]);
+    }
+
+    CU_ASSERT(i == 22); //nb_waypoints
+    CU_ASSERT_STRING_EQUAL(buffer, "M3M6M9M12M15M18D3D6D9D12D15D18S7S8S13S14S19S20B3B9P15P18");   
+}   
 
 int main() {
     CU_initialize_registry();
@@ -644,6 +669,11 @@ int main() {
     }
 
     if (NULL == CU_add_test(suite, "test authorize robot connexion empty file", test_authorize_robot_connexion_empty_file)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+    
+    if (NULL == CU_add_test(suite, "test name waypoints invalid", test_name_waypoints_creation)) {
         CU_cleanup_registry();
         return CU_get_error();
     }
