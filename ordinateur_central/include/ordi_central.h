@@ -20,15 +20,15 @@
 
 #include "waypoints_generation.h"
 
-#define NB_ROBOT 2
+#define NB_MAX_ROBOT 2
 #define DEFAULT_NB_COLONNES 4
 #define DEFAULT_NB_LIGNES 4
 #define MAX_ARTICLES_PORTES 2
 #define MAX_ARTICLES_LISTE_ATTENTE 10
 #define MAX_ESPACE_STOCK 100
 
-extern int nb_colonnes;
-extern int nb_lignes;
+extern int *nb_colonnes;
+extern int *nb_lignes;
 
 typedef struct {
     char *item_name;
@@ -46,8 +46,7 @@ typedef struct {
     int *quantities[MAX_WAYPOINTS];
 } Robot;
 
-void trajectoire(const char* pos_initiale, const char* pos_finale, char path[MAX_WAYPOINTS][SIZE_POS]);
-void gestionnaire_inventaire(int se);
+void trajectoire(const char* pos_initiale, const char* pos_finale, char path[MAX_WAYPOINTS][SIZE_POS], int nb_lignes, int nb_colonnes);
 char *parse_stock(const char *request, int max_elements, int *L_n[max_elements], int *L_x[max_elements], int *L_y[max_elements], char *item_names[max_elements], int count[max_elements], int *nb_items_request);
 int choose_items_stocks(char *item_names_requested[], int L_n_requested[], int count_requested,char *item_names_stock[], int *L_n_stock[], int *L_x_stock[], int *L_y_stock[], int count_stock[],Item_selected selected_items[]);
 void update_shared_memory_stock(Robot *shared_memory,Item_selected selected_items,int index_pos);
