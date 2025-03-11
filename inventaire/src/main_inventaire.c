@@ -41,6 +41,27 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
+    char message[50];
+    snprintf(message, sizeof(message), "rows,%d", nb_rows);
+    send_message(computer_sd, message);
+    recev_message(computer_sd, message);
+    // Check if the message is valid
+    if (strcmp(message, "Size updated successfully") != 0) {
+        fprintf(stderr, "Failed to update the number of rows\n");
+        exit(EXIT_FAILURE);
+    }
+
+    snprintf(message, sizeof(message), "columns,%d", nb_columns);
+    send_message(computer_sd, message);
+    recev_message(computer_sd, message);
+    // Check if the message is valid
+    if (strcmp(message, "Size updated successfully") != 0) {
+        fprintf(stderr, "Failed to update the number of columns\n");
+        exit(EXIT_FAILURE);
+    }
+
+
+
     // Communication avec les clients
 
     listen_to(se);
@@ -51,6 +72,7 @@ int main(int argc, char *argv[]) {
     args->nb_columns = &nb_columns;
     args->items = &items;
     args->nb_items = &nb_items;
+    args->computer_sd = computer_sd;
     pthread_create(&manager_thread, NULL, stock_manager, (void*)args);
     pthread_detach(manager_thread); // Évite les fuites mémoire
 

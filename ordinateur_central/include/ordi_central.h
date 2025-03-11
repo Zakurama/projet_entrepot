@@ -18,16 +18,21 @@
 #include <semaphore.h>
 #include <sys/mman.h>
 
-#define SIZE_POS 20
-#define NB_ROBOT 2
-#define NB_COLONNES 4
-#define NB_LIGNES 4
+#include "waypoints_generation.h"
+
+#define NB_MAX_ROBOT 10
+#define DEFAULT_NB_COLONNES 4
+#define DEFAULT_NB_LIGNES 4
 #define NB_BAC 2
 #define NAME_ITEM_SIZE 10
 #define MAX_ARTICLES_PORTES 2
 #define MAX_ARTICLES_LISTE_ATTENTE 10
 #define MAX_ESPACE_STOCK 100
+
 #define MAX_WAYPOINTS 1000
+
+extern int *nb_colonnes;
+extern int *nb_lignes;
 
 typedef struct {
     char *item_name;
@@ -43,15 +48,15 @@ typedef struct {
     int hold_items;
 
     char waypoints[MAX_WAYPOINTS][SIZE_POS];
-    
+    Point * pos_waypoints[MAX_WAYPOINTS]; 
+
     char item_name[MAX_WAYPOINTS][NAME_ITEM_SIZE];
     int positions[MAX_WAYPOINTS][2];
     int quantities[MAX_WAYPOINTS];
 
 } Robot;
 
-void trajectoire(const char* pos_initiale, const char* pos_finale, char path[MAX_WAYPOINTS][SIZE_POS]);
-void gestionnaire_inventaire(int se);
+void trajectoire(const char* pos_initiale, const char* pos_finale, char path[MAX_WAYPOINTS][SIZE_POS], int nb_lignes, int nb_colonnes);
 char *parse_stock(const char *request, int max_elements, int *L_n[max_elements], int *L_x[max_elements], int *L_y[max_elements], char *item_names[max_elements], int count[max_elements], int *nb_items_request);
 int choose_items_stocks(char *item_names_requested[], int L_n_requested[], int count_requested,char *item_names_stock[], int *L_n_stock[], int *L_x_stock[], int *L_y_stock[], int count_stock[],Item_selected selected_items[]);
 void update_shared_memory_stock(Robot *shared_memory,Item_selected selected_items,int index_pos);
@@ -59,6 +64,8 @@ char* convert_request_strings_to_lists(char *buffer_reception_ID_articles, char 
 void print_robot_state(Robot* robot);
 void convert_items_to_lists(Item_selected *selected_items, int num_items,char *chosen_item_names[MAX_ARTICLES_LISTE_ATTENTE],int *chosen_x_positions[MAX_ARTICLES_LISTE_ATTENTE],int *chosen_y_positions[MAX_ARTICLES_LISTE_ATTENTE],int *chosen_quantities[MAX_ARTICLES_LISTE_ATTENTE],int chosen_counts[MAX_ARTICLES_LISTE_ATTENTE]);
 char *create_inventory_string(int nb_items, int max_elements, int count[max_elements], int *L_n[max_elements], int *L_x[max_elements], int *L_y[max_elements], char *item_names[max_elements]);
+int authorize_robot_connexion(char *file_name, char *robot_ip);
+void gestion_flotte(int *nb_robots, char *ip);
 
 void remove_first_waypoint_of_robot(Robot *robot);
 int add_waypoint(Robot *robot, const char *waypoint);

@@ -4,23 +4,31 @@
 
 #define IP_SIZE 16
 #define DEFAULT_LOCALIP "127.0.0.1"
-#define LOCAL_IP "127.0.0.1"
 #define LOCAL_PORT 5000
-
-int ports[NB_ROBOT] = {8000,8001};
+#define PORT_ROBOT 8000
 
 char ip[IP_SIZE];
 
 void bye();
-void gestion_robot(int no);
+
 void gestionnaire_inventaire(int client_sd);
+void gestion_flotte(int *nb_robots, char *ip);
+
+void gestion_communication_robot(int no, int se, int *nb_robots);
 void gestionnaire_traj_robot(int no);
 
-int shm[NB_ROBOT];
-size_t size_robot = sizeof(Robot);
-Robot* robots[NB_ROBOT];
+int *nb_colonnes;
+int *nb_lignes;
 
-sem_t* sem_memoire_robot[NB_ROBOT];
+int shm[NB_MAX_ROBOT];
+size_t size_robot = sizeof(Robot);
+Robot* robots[NB_MAX_ROBOT];
+
+sem_t* sem_memoire_robot[NB_MAX_ROBOT];
+
+int shm_liste_waypoints;
+size_t size_liste_waypoints = sizeof(Liste_pos_waypoints);
+Liste_pos_waypoints * liste_waypoints; 
 
 // Mutex pour l'entrepôt
 sem_t* sem_bac[NB_BAC];
@@ -32,26 +40,47 @@ sem_t* sem_colonneSud[2*NB_LIGNES];
 sem_t* mutex_ecran;
 
 int main(int argc, char *argv[]) {
-    
-    int nb_processus = 1+2*NB_ROBOT;
+
 
     if(argc == 2){
-        strncpy(ip, argv[1], IP_SIZE - 1);
-        ip[IP_SIZE - 1] = '\0';
+        strncpy(ip, argv[1], IP_SIZE);
+        ip[IP_SIZE] = '\0';
     }
     else{
-        strncpy(ip, DEFAULT_LOCALIP, IP_SIZE - 1);
-        ip[IP_SIZE - 1] = '\0';
+        strncpy(ip, DEFAULT_LOCALIP, IP_SIZE);
+        ip[IP_SIZE] = '\0';
     }
 
-    pid_t pid[nb_processus];
+    // Mémoire partagée pour le nombre de robot
+    int *nb_robots;
+    int shm_nb_robots;
+    CHECK(shm_nb_robots = shm_open("nb_robots", O_CREAT | O_RDWR, 0666), "shm_open(nb_robots)");
+    CHECK(ftruncate(shm_nb_robots, sizeof(int)), "ftruncate(shm_nb_robots)");
+    CHECK_MAP(nb_robots = mmap(0, sizeof(int), PROT_READ | PROT_WRITE, MAP_SHARED, shm_nb_robots, 0), "mmap(nb_robots)");
+    *nb_robots = 0;
+
+    // Create shared memory for nb_colonnes and nb_lignes
+    int shm_colonnes, shm_lignes;
+    size_t size_int = sizeof(int);
+
+    CHECK(shm_colonnes = shm_open("nb_colonnes", O_CREAT | O_RDWR, 0666), "shm_open(nb_colonnes)");
+    CHECK(ftruncate(shm_colonnes, size_int), "ftruncate(shm_colonnes)");
+    CHECK_MAP(nb_colonnes = mmap(0, size_int, PROT_READ | PROT_WRITE, MAP_SHARED, shm_colonnes, 0), "mmap(nb_colonnes)");
+
+    CHECK(shm_lignes = shm_open("nb_lignes", O_CREAT | O_RDWR, 0666), "shm_open(nb_lignes)");
+    CHECK(ftruncate(shm_lignes, size_int), "ftruncate(shm_lignes)");
+    CHECK_MAP(nb_lignes = mmap(0, size_int, PROT_READ | PROT_WRITE, MAP_SHARED, shm_lignes, 0), "mmap(nb_lignes)");
+
+    // Initialize shared memory values
+    *nb_colonnes = DEFAULT_NB_COLONNES;
+    *nb_lignes = DEFAULT_NB_LIGNES;
 
     ////// Definition des mutex et des sémaphore nommées
 
     // ROBOTS
     char memory_robot_name[20];
     char mutex_name[30];
-    for(int i = 0;i<NB_ROBOT;i++){
+    for(int i = 0;i<NB_MAX_ROBOT;i++){
         // Gestion des mémoires partagées
         sprintf(memory_robot_name, "robots_data[%d]", i);
         CHECK(shm[i] = shm_open(memory_robot_name, O_CREAT | O_RDWR, 0666),"shm_open(robots_data)");
@@ -100,6 +129,14 @@ int main(int argc, char *argv[]) {
 
     ////// FIN definition des mutex et des sémaphore nommées
 
+    // Création de la mémoire partagée pour la liste de waypoints
+
+    CHECK(shm_liste_waypoints = shm_open("liste_waypoints", O_CREAT | O_RDWR, 0666),"shm_open(shm_liste_waypoints)");
+    CHECK(ftruncate(shm_liste_waypoints, size_liste_waypoints),"ftruncate(shm_liste_waypoints)");
+    CHECK_MAP(liste_waypoints = mmap(0, size_liste_waypoints, PROT_READ | PROT_WRITE, MAP_SHARED, shm_liste_waypoints, 0),"mmap");
+
+    waypoints_creation(*liste_waypoints, DEFAULT_HEDGE_3, DEFAULT_HEDGE_4, DEFAULT_HEDGE_5, *nb_colonnes, *nb_lignes, NB_MAX_ROBOT);
+
     // Permet de faire le cleanning des sémaphores lors des exits
     atexit(bye);// bye detruit les semaphores
 
@@ -111,27 +148,24 @@ int main(int argc, char *argv[]) {
     CHECK(sigaddset(&Mask , SIGINT), "sigaddset(SIGINT)");
     CHECK(sigprocmask(SIG_SETMASK , &Mask , &OldMask), "sigprocmask()");
 
-    // Création des fils du processus père (un par train)
-    for (int i=0;i<nb_processus;i++){
+    pid_t pid[2];
+    // Création des fils du processus père
+    for (int i=0;i<2;i++){
         CHECK(pid[i]=fork(),"fork(pid)");
         if (pid[i]==0){
             // Démasque SIGINT
             CHECK(sigprocmask(SIG_SETMASK , &OldMask , NULL), "sigprocmask()");
             if(i==0){
                 // Gestionnaire communication inventaire
-                int se_inventaire = 0; // la définir au préalable
-                init_tcp_socket(&se_inventaire,LOCAL_IP,LOCAL_PORT,1);
+                int se_inventaire = 0;
+                init_tcp_socket(&se_inventaire, ip, LOCAL_PORT, 1);
                 listen_to(se_inventaire);
                 int client_sd = accept_client(se_inventaire);
                 gestionnaire_inventaire(client_sd);
             }
-            if(i>0 && i<=NB_ROBOT){
-                // Processus de gestion des robots
-                gestion_robot(i-1);
-            }
-            else if(i>NB_ROBOT && i< nb_processus){
-                // Processus de gestion des trajecoires
-                gestionnaire_traj_robot(i-NB_ROBOT-1);
+            if(i==1){
+                // Processus de gestion de la flotte de robots
+                gestion_flotte(nb_robots, ip);
             }
 
         }
@@ -139,12 +173,12 @@ int main(int argc, char *argv[]) {
 
     // Processus Père
     // Attente de la terminaison des fils
-    for (int i=0;i<nb_processus;i++){
+    for (int i=0;i<2;i++){
         int status;
         CHECK(wait(&status), "wait()");
     }
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 
 void bye(){
@@ -154,7 +188,7 @@ void bye(){
     // ROBOT
     char nom_memoire[20];
     char mutex_name[30];
-    for(int i = 0;i<NB_ROBOT;i++){
+    for(int i = 0;i<NB_MAX_ROBOT;i++){
         // Suppression de la mémoire partagée
         sprintf(nom_memoire, "robots_data[%d]", i);
         CHECK(munmap(robots[i], size_robot),"munmap(robots_data)");
@@ -207,6 +241,11 @@ void bye(){
         CHECK(sem_unlink(colonne_sud_name),"sem_unlink(colonne_sud_name)");
     }
 
+    // LISTE WAYPOINTS
+    CHECK(munmap(liste_waypoints, size_liste_waypoints),"munmap(liste_waypoints)");
+    CHECK(close(shm_liste_waypoints),"close(shm_liste_waypoints)");
+    CHECK(shm_unlink("liste_waypoints"),"shm_unlink(liste_waypoints)");
+
 }
 
 void gestionnaire_inventaire(int client_sd){
@@ -239,7 +278,37 @@ void gestionnaire_inventaire(int client_sd){
     while (1){
         // On récupère les demandes de l'inventaire
         recev_message(client_sd, buffer_reception_ID_articles); // la liste des articles (ID)
-        recev_message(client_sd, buffer_reception_pos_articles); // la liste des positions
+    
+    // à ce moment soit l'inventaire à transmit une commande de clients 
+    // soit il a transmit le nombre de lignes ou de colonnes de l'inventaire
+    
+    // On vérifie si l'inventaire a envoyé une commande de modification de la taille de l'inventaire
+    int new_size = 0;
+    char size_type[MAXOCTETS];
+    if (sscanf(buffer_reception_ID_articles, "%[^,],%d", size_type, &new_size) == 2) {
+        if (strcmp(size_type, "rows") == 0) {
+            // Modification du nombre de lignes
+            *nb_lignes = new_size;
+             waypoints_creation (*liste_waypoints, DEFAULT_HEDGE_3, DEFAULT_HEDGE_4, DEFAULT_HEDGE_5, *nb_colonnes, *nb_lignes, NB_MAX_ROBOT);
+
+        } else if (strcmp(size_type, "columns") == 0) {
+            // Modification du nombre de colonnes
+            *nb_colonnes = new_size;
+             waypoints_creation (*liste_waypoints, DEFAULT_HEDGE_3, DEFAULT_HEDGE_4, DEFAULT_HEDGE_5, *nb_colonnes, *nb_lignes, NB_MAX_ROBOT);
+        }
+        else {
+            strcpy(buffer_emission, "Invalid size type");
+            send_message(client_sd, buffer_emission);
+            return;
+        }
+        strcpy(buffer_emission, "Size updated successfully");
+        send_message(client_sd, buffer_emission);
+        return;
+    }
+
+    // L'inventaire à envoyé une requête de commande
+    // On récupère les positions des articles en stock
+    recev_message(client_sd, buffer_reception_pos_articles); // la liste des positions
 
         char *error =  convert_request_strings_to_lists(buffer_reception_ID_articles, buffer_reception_pos_articles, item_names_requested, L_n_requested, L_n_stock, L_x_stock, L_y_stock, item_names_stock, &count_requested, count_stock,&nb_items);
         if (error != NULL) {
@@ -437,4 +506,44 @@ void gestion_robot(int no){
 
     }
 
+void gestion_flotte(int *nb_robots, char *ip){
+    int se;
+    init_tcp_socket(&se, ip, PORT_ROBOT, 1);
+    listen(se, MAXCLIENTS);
+
+    while (1){
+        struct sockaddr_in adrclient;
+        socklen_t adrclient_len = sizeof(adrclient);
+        int client_sd = accept(se, (struct sockaddr *)&adrclient, &adrclient_len);
+        CHECK_ERROR(client_sd, -1, "Erreur de accept !!!\n");
+
+        int robot_id = authorize_robot_connexion("robots.csv", inet_ntoa(adrclient.sin_addr));
+        CHECK_ERROR(robot_id, -1, "Erreur d'autorisation de connexion !!!\n");
+        if (robot_id == 0) {
+            close_socket(&client_sd);
+            continue;
+        }
+        if (*nb_robots >= NB_MAX_ROBOT) {
+            close_socket(&client_sd);
+            continue;
+        }
+        *nb_robots += 1;
+
+        // Le robot a le droit de se connecter, on crée donc ses gestionnaires
+        pid_t pid[2];
+        for (int i=0;i<2;i++){
+            CHECK(pid[i]=fork(),"fork(pid)");
+            if (pid[i]==0){
+                if(i==0){
+                    // Gestionnaire de communication avec le robot
+                    gestion_communication_robot(robot_id, client_sd, nb_robots);
+                }
+                if(i==1){
+                    // Processus de gestion de trajectoire du robot
+                    gestionnaire_traj_robot(robot_id);
+                }
+            }
+        }
+    }
 }
+

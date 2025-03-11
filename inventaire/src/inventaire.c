@@ -1,6 +1,7 @@
 #include "inventaire.h"
 
 pthread_mutex_t stock_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t central_compluter_socket_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 void init_stock(item_t *item, int nb_rows, int nb_columns, const char *item_placement) {
     item->quantity = 0;
@@ -421,8 +422,8 @@ void *handle_client(void *arg) {
         // Réception du message de la part du lecteur
         int nb_car = recv(client_sd, buff_reception, MAXOCTETS, 0);
         CHECK_ERROR(nb_car, -1, "\nProblème de réception !!!\n");
-        if (nb_car == 0) { // Si le serveur se déconnecte
-            pthread_exit(NULL);
+        if (nb_car == 0) { // Si le client se déconnecte
+            break;
         }
 
         buff_reception[nb_car] = '\0';
@@ -439,16 +440,12 @@ void *handle_client(void *arg) {
             // strcpy(buff_emission, get_stock_string(*stock, *nb_rows, *nb_columns));
         }
         else {
-            // pthread_mutex_lock(&stock_mutex);
             char * message = check_client_request(buff_reception, *items, *nb_items, 50);
-            // pthread_mutex_unlock(&stock_mutex);
 
             if (message != NULL) {
                 strcpy(buff_emission, message);
             }
             else {
-                send_message(computer_sd, buff_reception);
-                
                 int nb_items_request;
                 int max_items = 10;
                 char *item_names[max_items];
@@ -465,14 +462,17 @@ void *handle_client(void *arg) {
                 for (int i = 0; i < max_items; i++) {
                     free(item_names[i]);
                 }
+
+                pthread_mutex_lock(&central_compluter_socket_mutex);
+                send_message(computer_sd, buff_reception); // send the client request to the central computer
+                
                 sleep(0.5); // issue WSL ?
-                send_message(computer_sd ,buff_emission);
-
-
-
-                // code not tested yet, not implemented in ordinateur_central
+                
+                send_message(computer_sd ,buff_emission); // send the stock to the central computer
 
                 recev_message(computer_sd, buff_reception);
+                pthread_mutex_unlock(&central_compluter_socket_mutex);
+
                 pthread_mutex_lock(&stock_mutex);
                 char *response = handle_items_request(*items, *nb_items, *nb_rows, *nb_columns, buff_reception, 1);
                 pthread_mutex_unlock(&stock_mutex);
@@ -481,8 +481,6 @@ void *handle_client(void *arg) {
                 } else {
                     strcpy(buff_emission, "Stock updated successfully\n");
                 }
-
-                // end of code not tested yet
 
             }
             
@@ -499,6 +497,7 @@ void *stock_manager(void *arg) {
     int *nb_columns = args->nb_columns;  // Récupère le pointeur vers nb_columns
     item_t **items = args->items;  // Récupère le pointeur vers items
     int *nb_items = args->nb_items;  // Récupère le pointeur vers nb_items
+    int computer_sd = args->computer_sd;
     free(args);  // Libère la mémoire de la structure allouée
 
     char command[MAXOCTETS];
@@ -536,7 +535,23 @@ void *stock_manager(void *arg) {
                 pthread_mutex_lock(&stock_mutex);  // Verrouille l'accès au stock
                 add_row(*items, *nb_items, nb_rows, *nb_columns, nb_supplementary_rows);
                 pthread_mutex_unlock(&stock_mutex); // Déverrouille
-                printf("[Answer]  Rows added successfully!\n");
+
+                char message[50];
+                char response[MAXOCTETS];
+                snprintf(message, sizeof(message), "rows,%d", *nb_rows);
+
+                pthread_mutex_lock(&central_compluter_socket_mutex);
+                send_message(computer_sd, message);
+                int nb_car = recv(computer_sd, response, MAXOCTETS, 0);
+                pthread_mutex_unlock(&central_compluter_socket_mutex);
+
+                CHECK_ERROR(nb_car, -1, "Failed to receive message from computer");
+                response[nb_car] = '\0';
+                if (strcmp(response, "Invalid size type") == 0) {
+                    printf("[Answer] Invalid size type\n");
+                } else {
+                    printf("[Answer] Rows added successfully!\n");
+                }
             } else {
                 printf("[Answer] Invalid input! Please enter a number.\n");
             }
@@ -550,7 +565,24 @@ void *stock_manager(void *arg) {
                 pthread_mutex_lock(&stock_mutex);  // Verrouille l'accès au stock
                 add_column(*items, *nb_items, *nb_rows, nb_columns, nb_supplementary_columns);
                 pthread_mutex_unlock(&stock_mutex); // Déverrouille
-                printf("[Answer] Columns added successfully!\n");  
+
+                char message[50];
+                char response[MAXOCTETS];
+                snprintf(message, sizeof(message), "columns,%d", *nb_columns);
+
+                pthread_mutex_lock(&central_compluter_socket_mutex);
+                send_message(computer_sd, message);                
+                int nb_car = recv(computer_sd, response, MAXOCTETS, 0);
+                pthread_mutex_unlock(&central_compluter_socket_mutex);
+
+                CHECK_ERROR(nb_car, -1, "Failed to receive message from computer");
+                response[nb_car] = '\0';
+                if (strcmp(response, "Invalid size type") == 0) {
+                    printf("[Answer] Invalid size type\n");
+                } else {
+                    printf("[Answer] Columns added successfully!\n");
+                }
+
             } else {  
                 printf("[Answer] Invalid input! Please enter a number.\n");  
             }

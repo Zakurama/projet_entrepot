@@ -16,7 +16,9 @@ void test_trajectoire_generique(const char *pos_initiale, const char *pos_finale
         path[i][0] = '\0';  // Mettre une chaîne vide
     }
 
-    trajectoire(pos_initiale, pos_finale, path);
+    int nb_colonnes = 4;
+    int nb_lignes = 4;
+    trajectoire(pos_initiale, pos_finale, path, nb_lignes, nb_colonnes);
 
     printf(" [");
     for (int i = 0; i < MAX_WAYPOINTS; i++) {
@@ -491,6 +493,88 @@ void test_create_inventory_string_single_item(void) {
 
 }
 
+void test_authorize_robot_connexion_authorized(void) {
+    char *file_name = "temp_robots.csv";
+    char *robot_ip = "192.168.1.1";
+
+    // Create a temporary CSV file for testing
+    FILE *file = fopen(file_name, "w");
+    fprintf(file, "robot_ip,robot_id\n192.168.1.1,1001\n192.168.1.2,1002\n");
+    fclose(file);
+
+    int robot_id = authorize_robot_connexion(file_name, robot_ip);
+
+    CU_ASSERT_EQUAL(robot_id, 1001);
+
+    // Remove the temporary file
+    remove(file_name);
+}
+
+void test_authorize_robot_connexion_not_authorized(void) {
+    char *file_name = "temp_robots.csv";
+    char *robot_ip = "192.168.1.3";
+
+    // Create a temporary CSV file for testing
+    FILE *file = fopen(file_name, "w");
+    fprintf(file, "robot_ip,robot_id\n192.168.1.1,1001\n192.168.1.2,1002\n");
+    fclose(file);
+
+    int robot_id = authorize_robot_connexion(file_name, robot_ip);
+
+    CU_ASSERT_EQUAL(robot_id, 0);
+
+    // Remove the temporary file
+    remove(file_name);
+}
+
+void test_authorize_robot_connexion_invalid_file(void) {
+    char *file_name = "invalid.csv";
+    char *robot_ip = "192.168.1.1";
+
+    int robot_id = authorize_robot_connexion(file_name, robot_ip);
+
+    CU_ASSERT_EQUAL(robot_id, -1);
+}
+
+void test_authorize_robot_connexion_empty_file(void) {
+    char *file_name = "empty.csv";
+    char *robot_ip = "192.168.1.1";
+
+    // Create an empty CSV file for testing
+    FILE *file = fopen(file_name, "w");
+    fclose(file);
+
+    int robot_id = authorize_robot_connexion(file_name, robot_ip);
+
+    CU_ASSERT_EQUAL(robot_id, 0);
+
+    // Remove the temporary file
+    remove(file_name);
+}
+void test_name_waypoints_creation(void){
+    Liste_pos_waypoints liste_waypoints;
+    name_waypoints_creation(&liste_waypoints, 2, 3, 2);
+
+    int total_length = 0;
+    
+    for (int i = 0; liste_waypoints.name_waypoints[i][0] != '\0'; i++) 
+    {
+        total_length += strlen(liste_waypoints.name_waypoints[i]); 
+    }
+
+    CU_ASSERT(total_length != 0);    
+
+    char buffer[MAX_WAYPOINTS];
+
+    int i = 0; 
+    for (i=0; liste_waypoints.name_waypoints[i][0] != '\0'; i++) {
+        strcat(buffer, liste_waypoints.name_waypoints[i]);
+    }
+
+    CU_ASSERT(i == 22); //nb_waypoints
+    CU_ASSERT_STRING_EQUAL(buffer, "M3M6M9M12M15M18D3D6D9D12D15D18S7S8S13S14S19S20B3B9P15P18");   
+}   
+
 int main() {
     CU_initialize_registry();
 
@@ -559,6 +643,46 @@ int main() {
     }
 
     if (NULL == CU_add_test(suite, "test select item in stocks", test_selection_items)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
+    if (NULL == CU_add_test(suite, "test create inventory string", test_create_inventory_string)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
+    if (NULL == CU_add_test(suite, "test create inventory string empty", test_create_inventory_string_empty)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
+    if (NULL == CU_add_test(suite, "test create inventory string single item", test_create_inventory_string_single_item)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
+    if (NULL == CU_add_test(suite, "test authorize robot connexion authorized", test_authorize_robot_connexion_authorized)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
+    if (NULL == CU_add_test(suite, "test authorize robot connexion not authorized", test_authorize_robot_connexion_not_authorized)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
+    if (NULL == CU_add_test(suite, "test authorize robot connexion invalid file", test_authorize_robot_connexion_invalid_file)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
+    if (NULL == CU_add_test(suite, "test authorize robot connexion empty file", test_authorize_robot_connexion_empty_file)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+    
+    if (NULL == CU_add_test(suite, "test name waypoints invalid", test_name_waypoints_creation)) {
         CU_cleanup_registry();
         return CU_get_error();
     }
