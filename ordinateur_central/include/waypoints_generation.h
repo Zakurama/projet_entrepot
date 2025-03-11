@@ -12,6 +12,8 @@
  * Valeur en millimètre pour harmoniser avec le code des robots
 */
 
+#define SIZE_POS 10
+
 #define DEFAULT_HEDGE_2 (Point){0.0f, 0.0f} // x : mm, y : mm
 #define DEFAULT_HEDGE_3 (Point){-1781.0f, 0.0f} // x : mm, y : mm
 #define DEFAULT_HEDGE_4 (Point){-896.0f, -1107.0f} // x : mm, y : mm
@@ -36,7 +38,7 @@ typedef struct {
 
 typedef struct {
     Point pos_waypoints[MAX_WAYPOINTS]; 
-    char * name_waypoints[MAX_WAYPOINTS]; 
+    char name_waypoints[MAX_WAYPOINTS][SIZE_POS]; 
 } Liste_pos_waypoints; 
 
 void name_waypoints_creation(Liste_pos_waypoints *liste_waypoints, int nb_column, int nb_row, int nb_robot) ;
