@@ -19,10 +19,13 @@ void gestionnaire_inventaire(int client_sd);
 int shm[NB_ROBOT];
 size_t size_robot = sizeof(Robot);
 Robot* robots[NB_ROBOT];
+Liste_pos_waypoints * liste_waypoints; 
 
 sem_t* sem_memoire_robot[NB_ROBOT];
 
 int main(int argc, char *argv[]) {
+    //Initialisation liste_waypoints : 
+    waypoints_creation (*liste_waypoints, DEFAULT_HEDGE_3, DEFAULT_HEDGE_4, DEFAULT_HEDGE_5, nb_colonnes, nb_lignes, NB_ROBOT);
     
     int nb_processus = 1+2*NB_ROBOT;
 
@@ -159,9 +162,11 @@ void gestionnaire_inventaire(int client_sd){
         if (strcmp(size_type, "rows") == 0) {
             // Modification du nombre de lignes
             nb_lignes = new_size;
+            waypoints_creation (*liste_waypoints, DEFAULT_HEDGE_3, DEFAULT_HEDGE_4, DEFAULT_HEDGE_5, nb_colonnes, nb_lignes, NB_ROBOT);
         } else if (strcmp(size_type, "columns") == 0) {
             // Modification du nombre de colonnes
             nb_colonnes = new_size;
+            waypoints_creation (*liste_waypoints, DEFAULT_HEDGE_3, DEFAULT_HEDGE_4, DEFAULT_HEDGE_5, nb_colonnes, nb_lignes, NB_ROBOT);
         }
         else {
             strcpy(buffer_emission, "Invalid size type");
