@@ -611,9 +611,11 @@ void loop() {
         }
         
         break;
+        
       case ENVOI_FIN:
         Serial2.write("f\n"); 
         etat_actuel = RECEPTION_WAYPOINTS;
+        break; 
 
   }
 
