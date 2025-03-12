@@ -1,7 +1,11 @@
+#include "MeShield.h"
+#include <Wire.h>
+
 #define PWM_MAX 255            // max value of duty cycle that can be sent
 #define V_MAX 12.0             // max voltage that can be sent through the H-bridge
 #define V2PWM PWM_MAX / V_MAX 
 #define DT 5. // step time in ms
+#define VMAX 200
 
 #define RAYON_ROUE 29
 #define MAX_WAYPOINTS 10  
@@ -9,11 +13,11 @@
 // Seuil de distance pour considérer qu'on a atteint le waypoint
 #define SEUIL 200.0 // Par exemple, 5 cm de seuil
 
-
-
 //-----------------------------------------------------------------//
 // Objects
 //-----------------------------------------------------------------//
+MeGyro gyro;
+
 struct Point{
   float x; //mm
   float y;
@@ -53,6 +57,9 @@ struct Robot{
   Point pos;
   float theta;
 
+  float vx; 
+  float vy;
+
   float v;
   float w;
   float vr;
@@ -63,6 +70,8 @@ struct Robot{
   float voltage_g;
   float vitesse_d_r;
   float vitesse_g_r;
+
+ 
   
 };
 
@@ -100,8 +109,8 @@ struct Trajectoire{
 //-----------------------------------------------------------------//
 
 Point_marvelmind marvel_pos = {.x = 0, .y = 0}; 
-struct Trajectoire trajectoire = {.Kx = 0.2, .Ky = 0.2,.waypoints = {{500, 0}, {500, 500}, {1000,500}}, .nb_waypoints = 3, .current_wp = 0,.x0=0,.Vx0 = 0,.xf = 0,.Vxf = 0,.y0=0,.Vy0 = 0,.yf = 0,.Vyf = 0,.t0 = 0, .tf = 4};
-struct Robot robot = {.longueur=126, .largeur=84,.KM = 50., .pos = {0}, .theta=0,0};
+struct Trajectoire trajectoire = {.Kx = 1, .Ky = 1,.waypoints = {{500, 0}, {500, 500}, {1000,500}}, .nb_waypoints = 3, .current_wp = 0,.x0=0,.Vx0 = 0,.xf = 0,.Vxf = 0,.y0=0,.Vy0 = 0,.yf = 0,.Vyf = 0,.t0 = 0, .tf = 10};
+struct Robot robot = {.longueur=126, .largeur=84,.KM = 50., .pos = {0}, .theta=0, 0.};
 struct Motor motor_G = {.VA=18, .VB=31, .I1=34, .I2=35, .PWM=12,.pulse_par_tour = 8, .rapport_reduction = 46,.type_motor = "Gauche",0};
 struct Motor motor_D = {.VA=19, .VB=38, .I1=37, .I2=36, .PWM=8,.pulse_par_tour = 8, .rapport_reduction = 46,.type_motor = "Droit",0};
 
@@ -183,6 +192,8 @@ void robot_updatePos(Robot &robot,Motor &motor_D, Motor &motor_G){
   robot.v = (motor_D.last_speed + motor_G.last_speed)/2;
   robot.w = (motor_D.last_speed - motor_G.last_speed)/(2*robot.largeur);
 
+  robot.vx = (cos(robot.theta)*robot.v-robot.w*robot.longueur*sin(robot.theta));
+  robot.vy = (sin(robot.theta)*robot.v+robot.w*robot.longueur*cos(robot.theta));
   robot.pos.x = robot.pos.x + dt* (cos(robot.theta)*robot.v-robot.w*robot.longueur*sin(robot.theta));
   robot.pos.y = robot.pos.y + dt* (sin(robot.theta)*robot.v+robot.w*robot.longueur*cos(robot.theta));
   robot.theta = robot.theta + dt* robot.w;
@@ -201,7 +212,7 @@ void robot_updateVDrVGr(Robot &robot,float vitesse_v_ref,float vitesse_w_ref){
   }
 
 void robot_updateVrWr(Robot &robot, float vitesse_x_ref,float vitesse_y_ref){
-  robot.vr = cos(robot.theta)*vitesse_x_ref + sin(robot.theta)*vitesse_y_ref;
+  robot.vr = constrain(cos(robot.theta)*vitesse_x_ref + sin(robot.theta)*vitesse_y_ref, -VMAX, VMAX);
   robot.wr = (-sin(robot.theta)*vitesse_x_ref + cos(robot.theta)*vitesse_y_ref)/robot.largeur;
 }
 
@@ -209,53 +220,64 @@ void robot_updateVrWr(Robot &robot, float vitesse_x_ref,float vitesse_y_ref){
 // Trajectoire Functions
 //-----------------------------------------------------------------//
 
-void trajectoire_update(Trajectoire &trajectoire, Robot &robot, Point_marvelmind marvel_pos){
+// return true si le robot à atteint le dernier waypoint qu'il doit atteindre et false sinon
+bool trajectoire_update(Trajectoire &trajectoire, Robot &robot, Point_marvelmind marvel_pos){
 
-  
-  int current_wp = trajectoire.current_wp; 
-  trajectoire.xf = trajectoire.waypoints[current_wp].x; 
-  trajectoire.yf = trajectoire.waypoints[current_wp].y; 
+  int current_wp = trajectoire.current_wp;
+  trajectoire.xf = trajectoire.waypoints[current_wp].x;
+  trajectoire.yf = trajectoire.waypoints[current_wp].y;
 
   float t = millis()*0.001;
 
-  float a0x = trajectoire.x0;
-  float a1x = trajectoire.Vx0*(trajectoire.tf-trajectoire.t0);
-  float a2x = (trajectoire.Vxf + trajectoire.Vx0)/(2*(trajectoire.tf-trajectoire.t0)) - a1x; 
-  float a3x = trajectoire.xf - a0x - a1x -a2x ;
+  // on n'interpole que jusqu'au point final
+  if (t < trajectoire.tf){
+    float a0x = trajectoire.x0;
+    float a1x = trajectoire.Vx0*(trajectoire.tf-trajectoire.t0);
+    float a2x = (trajectoire.Vxf + trajectoire.Vx0)/(2*(trajectoire.tf-trajectoire.t0)) - a1x; 
+    float a3x = trajectoire.xf - a0x - a1x -a2x ;
 
-  float a0y = trajectoire.y0;
-  float a1y = trajectoire.Vy0*(trajectoire.tf-trajectoire.t0);
-  float a2y = (trajectoire.Vyf + trajectoire.Vy0)/(2*(trajectoire.tf-trajectoire.t0)) - a1y;
-  float a3y = -a2y + trajectoire.yf - trajectoire.y0 - a1y;
-  
-  float lambda = (t-trajectoire.t0)/(trajectoire.tf-trajectoire.t0);
+    float a0y = trajectoire.y0;
+    float a1y = trajectoire.Vy0*(trajectoire.tf-trajectoire.t0);
+    float a2y = (trajectoire.Vyf + trajectoire.Vy0)/(2*(trajectoire.tf-trajectoire.t0)) - a1y;
+    float a3y = -a2y + trajectoire.yf - trajectoire.y0 - a1y;
+    
+    float lambda = (t-trajectoire.t0)/(trajectoire.tf-trajectoire.t0);
 
+    trajectoire.xr = a0x + a1x*lambda + a2x*lambda*lambda + a3x*lambda*lambda*lambda;
+    trajectoire.dxr = 1/(trajectoire.tf-trajectoire.t0)*(a1x + 2*a2x*lambda + 3*a3x*lambda*lambda);
 
-  trajectoire.xr = a0x + a1x*lambda + a2x*lambda*lambda + a3x*lambda*lambda*lambda;
-  trajectoire.dxr = 1/(trajectoire.tf-trajectoire.t0)*(a1x + 2*a2x*lambda + 3*a3x*lambda*lambda);
+    trajectoire.yr = a0y + a1y*lambda + a2y*lambda*lambda + a3y*lambda*lambda*lambda;
+    trajectoire.dyr = 1/(trajectoire.tf-trajectoire.t0)*(a1y + 2*a2y*lambda + 3*a3y*lambda*lambda);
+  }
+  else {
+    trajectoire.xr = trajectoire.waypoints[current_wp].x; 
+    trajectoire.dxr =0; 
 
-  trajectoire.yr = a0y + a1y*lambda + a2y*lambda*lambda + a3y*lambda*lambda*lambda;
-  trajectoire.dyr = 1/(trajectoire.tf-trajectoire.t0)*(a1y + 2*a2y*lambda + 3*a3y*lambda*lambda);
+    trajectoire.yr = trajectoire.waypoints[current_wp].y;
+    trajectoire.dyr =0; 
+  }
 
   float distance = sqrt(pow((float)marvel_pos.x - trajectoire.xf, 2) + pow((float)marvel_pos.y - trajectoire.yf, 2));
 
-  Serial.println("Distance : " + String(distance)); 
-  Serial.println("current wp : " + String(trajectoire.current_wp)); 
+  // Serial.println("Distance : " + String(distance));
+  // Serial.println("current wp : " + String(trajectoire.current_wp));
 
-  if ((distance < SEUIL) && (trajectoire.current_wp != trajectoire.nb_waypoints-1)) {
+  if ((distance < SEUIL) && (trajectoire.current_wp < trajectoire.nb_waypoints-1)) {
     // Passer au waypoint suivant, mais seulement si ce n'est pas le dernier waypoint
-    if (trajectoire.current_wp < trajectoire.nb_waypoints - 1) {
-      trajectoire.current_wp++;
-      current_wp = trajectoire.current_wp; 
-      trajectoire.x0 = trajectoire.xr;  
-      trajectoire.y0 = trajectoire.yr; 
-      trajectoire.Vx0 = trajectoire.dxr; //robot.vr; 
-      trajectoire.Vy0 = trajectoire.dyr; //robot.wr; 
-      trajectoire.xf = trajectoire.waypoints[current_wp].x; 
-      trajectoire.yf = trajectoire.waypoints[current_wp].y; 
-      trajectoire.t0 += t; 
-      trajectoire.tf = t + trajectoire.tf;
-    } 
+    trajectoire.current_wp++;
+    current_wp = trajectoire.current_wp;
+    trajectoire.x0 = marvel_pos.x;
+    trajectoire.y0 = marvel_pos.y;
+    trajectoire.Vx0 = trajectoire.dxr; 
+    trajectoire.Vy0 = trajectoire.dyr; 
+    trajectoire.xf = trajectoire.waypoints[current_wp].x;
+    trajectoire.yf = trajectoire.waypoints[current_wp].y;
+    trajectoire.t0 += t;
+    trajectoire.tf = t + trajectoire.tf;
+    return false;
+  }
+  else if ((distance < SEUIL) && (trajectoire.current_wp == trajectoire.nb_waypoints-1)){
+    return true;
   }
 }
 
@@ -306,21 +328,27 @@ void onRisingEdge_MG(){
 char buffer[20]; 
 
 void marvelmindsetup (Point_marvelmind *marvel_pos){
-   
+  
+  Serial2.write("p\n"); 
   int index = 0; 
+  int parasiteCount = 3;  // Nombre de caractères à ignorer p\n\0
   while (1)
   {    
     if (Serial2.available()) { // Vérifie si des données sont disponibles sur Serial2
-      char c = Serial2.read();    // Lit un caractère depuis Serial2 (Hello World)
+      char c = Serial2.read();  
+      // Ignorer les 3 premiers caractères parasites
+      if (parasiteCount > 0) { 
+          parasiteCount--;  
+          continue;  
+      }
       //Serial.print(c);            // Affiche ce caractère sur le Serial Monitor
       buffer[index++]=c; 
     
-    if (c == '\n' || index >= 19) break;
+      if (c == '\n' || index >= 19) break;
     }
   }
   buffer[index]='\0';
-  Serial.println(buffer); 
-
+  
   if (sscanf(buffer, "x:%d,y:%d", &(marvel_pos->x), &(marvel_pos->y)) == 2){
     Serial.println("Parsing réussi !");
     Serial.print("x_marvel = ");
@@ -331,24 +359,132 @@ void marvelmindsetup (Point_marvelmind *marvel_pos){
 
 }
 
-void readmarvelmind (Point_marvelmind *marvel_pos){
+// Return 0 if able to read positions and put them in marvel_pos
+// Return -1 otherwise
+int readmarvelmind (Point_marvelmind *marvel_pos){
    
+  Serial2.write("p\n"); 
   int index = 0; 
   strcpy(buffer, ""); 
+  int parasiteCount = 3;  // Nombre de caractères à ignorer p\n\0
   while (1)
   {    
     if (Serial2.available()) { // Vérifie si des données sont disponibles sur Serial2
-      char c = Serial2.read();    // Lit un caractère depuis Serial2 (Hello World)
+      char c = Serial2.read();  
+      // Ignorer les 3 premiers caractères parasites
+      if (parasiteCount > 0) { 
+          parasiteCount--;  
+          continue;  
+      }
       //Serial.print(c);            // Affiche ce caractère sur le Serial Monitor
       buffer[index++]=c; 
     
-    if (c == '\n' || index >= 19) break;
+      if (c == '\n' || index >= 19) break;
     }
   }
-  buffer[index]='\0';
 
-  sscanf(buffer, "x:%d,y:%d", &(marvel_pos->x), &(marvel_pos->y)); 
-  
+  buffer[index]='\0';
+  Serial.println(buffer); 
+  int x, y;
+
+  if (sscanf(buffer, "x:%d,y:%d", &x, &y) == 2){
+    marvel_pos->x = x;
+    marvel_pos->y = y;
+    return 0;
+  }
+  return -1;
+}
+
+void rotation_trigo(float voltage, struct Motor &right_motor, struct Motor &left_motor){
+  motor_setVoltage(voltage, right_motor);
+  motor_setVoltage(-voltage, left_motor);
+  motor_applyVoltage(right_motor); motor_applyVoltage(left_motor);
+}
+
+void rotation_anti_trigo(float voltage, struct Motor &right_motor, struct Motor &left_motor){
+  motor_setVoltage(-voltage, right_motor);
+  motor_setVoltage(voltage, left_motor);
+  motor_applyVoltage(right_motor); motor_applyVoltage(left_motor);
+}
+
+void rotation(double angle, struct Motor &right_motor, struct Motor &left_motor) {
+    bool trigo = true;
+    int precision_angle = 5; // en °
+    const double max_voltage = 8.0;
+    const double min_voltage = 2.0;
+
+    if (fmod(angle + 180, 360) < 180) {
+      trigo = false;
+    }
+
+    gyro.update();
+    double theta0 = gyro.getAngleZ(); // -180 < theta < 180
+    double angle_final = fmod(angle + theta0 + 180, 360) - 180;
+
+    // Définir la tension initiale des moteurs
+    double voltage = max_voltage;
+    if (trigo) {
+        rotation_trigo(voltage, right_motor, left_motor);
+    } else {
+        rotation_anti_trigo(voltage, right_motor, left_motor);
+    }
+
+    while (true) {
+        gyro.update();
+        double current_angle = gyro.getAngleZ();
+        Serial.println("current angle: " + String(current_angle));
+        double error = angle_final - current_angle;
+
+        // Si l'erreur est dans la précision, arrêter la rotation
+        if (abs(error) < precision_angle) {
+            break;
+        }
+
+        // Si on dépasse l'angle cible, inverser la rotation
+        if ((trigo && error < 0) || (!trigo && error > 0)) {
+            trigo = !trigo;
+            voltage = voltage / 2;
+
+            voltage = max(voltage, min_voltage);
+
+
+            if (trigo) {
+              rotation_trigo(voltage, right_motor, left_motor);
+            } else {
+              rotation_anti_trigo(voltage, right_motor, left_motor);
+            }
+        }
+
+        delay(10);
+    }
+
+    // Arrêter les moteurs
+    motor_setVoltage(0.0, right_motor);
+    motor_setVoltage(0.0, left_motor);
+    motor_applyVoltage(right_motor); motor_applyVoltage(left_motor);
+}
+
+double compute_angle(Point point1, Point point2) {
+    return atan2(point2.y - point1.y, point2.x - point1.x) * 180.0 / M_PI; // Convert radians to degrees
+}
+
+double get_offset_gyroscope_angle(struct Motor &right_motor, struct Motor &left_motor){
+  // mesurer la position à l'aide de marvelmind
+  Point_marvelmind point_initial; // mesurer la position à l'aide de marvelmind
+  readmarvelmind(&point_initial);
+
+  motor_setVoltage(6, right_motor);
+  motor_setVoltage(6, left_motor);
+  motor_applyVoltage(motor_D); motor_applyVoltage(motor_G);
+  delay(750);
+
+  Point_marvelmind point_final; // mesurer la nouvelle position à l'aide de marvelmind
+  readmarvelmind(&point_final);
+
+  Point point1 = {.x = ((float)point_initial.x), .y = ((float)point_initial.y)};
+  Point point2 = {.x = ((float)point_final.x), .y = ((float)point_final.y)};
+
+  return compute_angle(point1, point2);
 }
 
 //-----------------------------------------------------------------//
@@ -371,10 +507,14 @@ void setup() {
 void loop() { 
 
   long t = millis();
-  if (t<= trajectoire.tf* 1000 and t > 0) { 
-    readmarvelmind(&marvel_pos); 
-    trajectoire_update(trajectoire, robot, marvel_pos);
-    robot_updateVrWr(robot,trajectoire.dxr + trajectoire.Kx*(trajectoire.xr-marvel_pos.x),trajectoire.dyr + trajectoire.Ky*(trajectoire.yr-marvel_pos.y));
+  bool parcours_fini = false;
+  if (!parcours_fini and t > 0 and t < 20000) {
+    
+    readmarvelmind(&marvel_pos);
+     
+    parcours_fini = trajectoire_update(trajectoire, robot, marvel_pos);
+    //robot_updateVrWr(robot,trajectoire.dxr + trajectoire.Kx*(trajectoire.xr-marvel_pos.x),trajectoire.dyr + trajectoire.Ky*(trajectoire.yr-marvel_pos.y));
+    robot_updateVrWr(robot,robot.vx + trajectoire.Kx*(trajectoire.xr-marvel_pos.x), trajectoire.Ky*(robot.vy + trajectoire.yr-marvel_pos.y));
     robot_updateVDrVGr(robot,robot.vr,robot.wr);
     robot_updateVoltage(robot,robot.vitesse_d_r,robot.vitesse_g_r);
     motor_setVoltage(robot.voltage_d, motor_D);
@@ -382,6 +522,7 @@ void loop() {
     motor_updateSpeed(motor_D);
     motor_updateSpeed(motor_G);
     robot_updatePos(robot, motor_D,motor_G);
+  /*
     Serial.println("Position robot marvel : ");
     Serial.println("x : " + String(marvel_pos.x));
     Serial.println("y : " + String(marvel_pos.y));
@@ -390,11 +531,15 @@ void loop() {
     Serial.println("yr : " + String(trajectoire.yr));
     Serial.println("Position waypoint : ");
     Serial.println("x : " + String(trajectoire.waypoints[trajectoire.current_wp].x));
-    Serial.println("y : " + String(trajectoire.waypoints[trajectoire.current_wp].y)); 
-    /*
+    Serial.println("y : " + String(trajectoire.waypoints[trajectoire.current_wp].y)); */
+    
     Serial.println("theta : " + String(robot.theta));
     Serial.println("v : " + String(robot.v));
     Serial.println("w : " + String(robot.w));
+    Serial.println("vr : " + String(robot.vr));
+    Serial.println("wr : " + String(robot.wr));
+
+    /*
     Serial.println("motor_G voltage : "+ String(robot.voltage_g)); 
     Serial.println("motor_D voltage : "+ String(robot.voltage_d)); 
     Serial.print("motor_G_voltage:");
