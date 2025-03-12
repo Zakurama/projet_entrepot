@@ -465,6 +465,9 @@ void *handle_client(void *arg) {
 
                 pthread_mutex_lock(&central_compluter_socket_mutex);
                 send_message(computer_sd, buff_reception); // send the client request to the central computer
+                
+                sleep(0.5); // issue WSL ?
+                
                 send_message(computer_sd ,buff_emission); // send the stock to the central computer
 
                 recev_message(computer_sd, buff_reception);

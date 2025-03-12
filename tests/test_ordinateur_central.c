@@ -20,12 +20,15 @@ void test_trajectoire_generique(const char *pos_initiale, const char *pos_finale
     int nb_lignes = 4;
     trajectoire(pos_initiale, pos_finale, path, nb_lignes, nb_colonnes);
 
+    printf(" [");
     for (int i = 0; i < MAX_WAYPOINTS; i++) {
         if (expected[i][0] == '\0' && path[i][0] == '\0') {
             break;
         }
+        printf(" %s ",path[i]);
         CU_ASSERT_STRING_EQUAL(path[i], expected[i]);
     }
+    printf("] ");
 }
 
 void test_trajectoire_D25_S14() {
@@ -50,21 +53,21 @@ void test_trajectoire_P25_S44() {
 
 void test_trajectoire_S44_S11() {
     char expected[MAX_WAYPOINTS][SIZE_POS] = {
-        "S44", "S43", "S42", "S41", "S40", "M40", "M35", "M30", "M25", "M20", "M15", "M10", "S11"
+        "S44", "S43", "S42", "S41", "M40", "M35", "M30", "M25", "M20", "M15", "M10", "S11"
     };
     test_trajectoire_generique("S44", "S11", expected);
 }
 
 void test_trajectoire_S11_S44() {
     char expected[MAX_WAYPOINTS][SIZE_POS] = {
-        "S11", "S10", "M10","M5","D5", "D10", "D15", "D20", "D25", "D30", "D35", "D40", "M40", "S41", "S42", "S43", "S44"
+        "S11", "M10","M5","D5", "D10", "D15", "D20", "D25", "D30", "D35", "D40", "M40", "S41", "S42", "S43", "S44"
     };
     test_trajectoire_generique("S11", "S44", expected);
 }
 
 void test_trajectoire_S14_P25() {
     char expected[MAX_WAYPOINTS][SIZE_POS] = {
-        "S14", "S13", "S12", "S11", "S10", "M10","M5","D5", "D10", "D15", "D20", "D25", "P25"
+        "S14", "S13", "S12", "S11", "M10","M5","D5", "D10", "D15", "D20", "D25", "P25"
     };
     test_trajectoire_generique("S14", "P25", expected);
 }
@@ -78,23 +81,30 @@ void test_trajectoire_P25_B5() {
 
 void test_trajectoire_B5_P25() {
     char expected[MAX_WAYPOINTS][SIZE_POS] = {
-        "B5", "B10", "P25"
+        "B5",  "D5",  "D10",  "D15",  "D20",  "D25",  "P25"
     };
     test_trajectoire_generique("B5", "P25", expected);
 }
 
-void test_trajectoire_B10_P25() {
+void test_trajectoire_B15_P30() {
     char expected[MAX_WAYPOINTS][SIZE_POS] = {
-        "B10", "P25"
+        "B15",  "D15",  "D20",  "D25", "D30",  "P30" 
     };
-    test_trajectoire_generique("B10", "P25", expected);
+    test_trajectoire_generique("B15", "P30", expected);
 }
 
-void test_trajectoire_D30_B10() {
+void test_trajectoire_D30_B15() {
     char expected[MAX_WAYPOINTS][SIZE_POS] = {
-        "D30","D35","D40","M40","M35", "M30", "M25", "M20", "M15", "M10", "D10", "B10"
+        "D30","D35","D40","M40","M35", "M30", "M25", "M20", "M15", "M10","M5","D5","D10", "D15", "B15"
     };
-    test_trajectoire_generique("D30", "B10", expected);
+    test_trajectoire_generique("D30", "B15", expected);
+}
+
+void test_trajectoire_S11_B15() {
+    char expected[MAX_WAYPOINTS][SIZE_POS] = {
+        "S11","M10","M5","D5","D10","D15","B15"
+    };
+    test_trajectoire_generique("S11", "B15", expected);
 }
 
 void test_parse_stock_good_request(void) {
@@ -325,6 +335,8 @@ void test_selection_items(void) {
 }
 
 void test_update_shared_memory_stock(void) {
+    int nb_colonnes = 4;
+    
     // Initialisation de la structure Robot
     Robot robot = {0}; // Initialise tous les pointeurs à NULL
 
@@ -346,30 +358,28 @@ void test_update_shared_memory_stock(void) {
     CU_ASSERT_PTR_NOT_NULL_FATAL(item.positions[0]);
 
     // Initialisation des valeurs
-    item.positions[0][0] = 5;
-    item.positions[0][1] = 10;
+    item.positions[0][0] = 0;
+    item.positions[0][1] = 2;
     item.quantities[0] = 3;
 
     // Appel de la fonction
-    update_shared_memory_stock(&robot, item,0);
+    update_shared_memory_stock(&robot, item,0,nb_colonnes);
 
     // Vérification que l'élément a été ajouté correctement
     CU_ASSERT_PTR_NOT_NULL(robot.item_name[0]);
     CU_ASSERT_STRING_EQUAL(robot.item_name[0], "Item1");
 
     CU_ASSERT_PTR_NOT_NULL(robot.positions[0]);
-    CU_ASSERT_EQUAL(robot.positions[0][0], 6);
-    CU_ASSERT_EQUAL(robot.positions[0][1], 11);
+
+    CU_ASSERT_EQUAL(robot.positions[0],13);
 
     CU_ASSERT_PTR_NOT_NULL(robot.quantities[0]);
-    CU_ASSERT_EQUAL(robot.quantities[0][0], 3);
+    CU_ASSERT_EQUAL(robot.quantities[0], 3);
 
     // Libération de la mémoire allouée
     free(item.positions[0]);
     free(item.positions);
     free(item.quantities);
-    free(robot.positions[0]);
-    free(robot.quantities[0]);
 }
 
 void test_create_inventory_string(void) {
@@ -567,6 +577,124 @@ void test_name_waypoints_creation(void){
     CU_ASSERT_STRING_EQUAL(buffer, "M3M6M9M12M15M18D3D6D9D12D15D18S7S8S13S14S19S20B3B9P15P18");   
 }   
 
+void test_remove_first_waypoint_success() {
+    Robot robot = {
+        .waypoints = {
+            "WP1", "WP2", "WP3", "", "", "", "", "", "", ""
+        }
+    };
+
+    int result = remove_first_waypoint_of_robot(&robot);
+    
+    CU_ASSERT_EQUAL(result, 0);
+    CU_ASSERT_STRING_EQUAL(robot.waypoints[0], "WP2");
+    CU_ASSERT_STRING_EQUAL(robot.waypoints[1], "WP3");
+    CU_ASSERT_STRING_EQUAL(robot.waypoints[2], "");
+}
+
+void test_remove_first_waypoint_empty() {
+    Robot robot = { .waypoints = { "", "", "", "", "", "", "", "", "", "" } };
+
+    int result = remove_first_waypoint_of_robot(&robot);
+    
+    CU_ASSERT_EQUAL(result, -1);
+    CU_ASSERT_STRING_EQUAL(robot.waypoints[0], "");
+}
+
+void test_add_waypoint_success() {
+    Robot robot = { .waypoints = { "WP1", "WP2", "", "", "", "", "", "", "", "" } };
+
+    int result = add_waypoint(&robot, "WP3");
+    
+    CU_ASSERT_EQUAL(result, 0);
+    CU_ASSERT_STRING_EQUAL(robot.waypoints[2], "WP3");
+}
+
+void test_add_waypoint_empty_list() {
+    Robot robot = { .waypoints = { "", "", "", "", "", "", "", "", "", "" } };
+
+    int result = add_waypoint(&robot, "WP1");
+
+    CU_ASSERT_EQUAL(result, 0);
+    CU_ASSERT_STRING_EQUAL(robot.waypoints[0], "WP1");
+}
+
+void test_remove_first_item_success() {
+    Robot robot = {
+        .item_name = { "Item1", "Item2", "Item3", "", "", "", "", "", "", "" },
+        .positions = { 1, 2, 3, 0, 0, 0, 0, 0, 0, 0 },
+        .quantities = { 10, 20, 30, 0, 0, 0, 0, 0, 0, 0 }
+    };
+
+    int result = remove_first_item_of_robot(&robot);
+
+    CU_ASSERT_EQUAL(result, 0);
+    CU_ASSERT_STRING_EQUAL(robot.item_name[0], "Item2");
+    CU_ASSERT_STRING_EQUAL(robot.item_name[1], "Item3");
+    CU_ASSERT_EQUAL(robot.positions[0], 2);
+    CU_ASSERT_EQUAL(robot.quantities[0], 20);
+}
+
+void test_remove_first_item_empty() {
+    Robot robot = { .item_name = { "", "", "", "", "", "", "", "", "", "" } };
+
+    int result = remove_first_item_of_robot(&robot);
+
+    CU_ASSERT_EQUAL(result, -1);
+    CU_ASSERT_STRING_EQUAL(robot.item_name[0], "");
+}
+
+void test_get_index_of_waypoint_P() {
+    CU_ASSERT_EQUAL(get_index_of_waypoint('P', 15, 4, 3), 15 / (4 + 1) - 1 - 2 * 3);
+    CU_ASSERT_EQUAL(get_index_of_waypoint('P', 25, 5, 2), 25 / (5 + 1) - 1 - 2 * 2);
+}
+
+void test_get_index_of_waypoint_B() {
+    CU_ASSERT_EQUAL(get_index_of_waypoint('B', 12, 3, 2), (12 / (3 + 1) - 1) / 2);
+    CU_ASSERT_EQUAL(get_index_of_waypoint('B', 20, 4, 3), (20 / (4 + 1) - 1) / 2);
+}
+
+void test_get_index_of_waypoint_S() {
+    CU_ASSERT_EQUAL(get_index_of_waypoint('S', 18, 4, 3), 18 / (2 * (4 + 1)) - 1);
+    CU_ASSERT_EQUAL(get_index_of_waypoint('S', 30, 5, 2), 30 / (2 * (5 + 1)) - 1);
+}
+
+void test_get_index_of_waypoint_DM() {
+    CU_ASSERT_EQUAL(get_index_of_waypoint('D', 16, 4, 3), 16 / (4 + 1) - 1);
+    CU_ASSERT_EQUAL(get_index_of_waypoint('M', 22, 5, 2), 22 / (5 + 1) - 1);
+}
+
+void test_get_index_of_waypoint_invalid() {
+    CU_ASSERT_EQUAL(get_index_of_waypoint('X', 10, 3, 2), -1);
+}
+
+void test_get_current_and_final_pos_B() {
+    Robot robot = {.current_pos = "A1"};
+    char current[SIZE_POS], final[SIZE_POS];
+
+    get_current_and_final_pos(&robot, 2, current, final, 'B', 4, 3);
+    CU_ASSERT_STRING_EQUAL(current, "A1");
+    CU_ASSERT_STRING_EQUAL(final, "B25");
+}
+
+void test_get_current_and_final_pos_P() {
+    Robot robot = {.current_pos = "C3"};
+    char current[SIZE_POS], final[SIZE_POS];
+
+    get_current_and_final_pos(&robot, 3, current, final, 'P', 5, 2);
+    CU_ASSERT_STRING_EQUAL(current, "C3");
+    CU_ASSERT_STRING_EQUAL(final, "P48");
+}
+
+void test_get_current_and_final_pos_S() {
+    Robot robot = {.current_pos = "D4", .positions = {7}};
+    char current[SIZE_POS], final[SIZE_POS];
+
+    get_current_and_final_pos(&robot, 1, current, final, 'S', 3, 2);
+    CU_ASSERT_STRING_EQUAL(current, "D4");
+    CU_ASSERT_STRING_EQUAL(final, "S7");  // robot.positions[0] = 7
+}
+
 int main() {
     CU_initialize_registry();
 
@@ -580,9 +708,10 @@ int main() {
     CU_add_test(suite, "Trajectoire de S14 à P25", test_trajectoire_S14_P25);
     CU_add_test(suite, "Trajectoire de P25 à B5", test_trajectoire_P25_B5);
     CU_add_test(suite, "Trajectoire de B5 à P25", test_trajectoire_B5_P25);
-    CU_add_test(suite, "Trajectoire de B10 à P25", test_trajectoire_B10_P25);
-    CU_add_test(suite, "Trajectoire de D30 à B10", test_trajectoire_D30_B10);
-
+    CU_add_test(suite, "Trajectoire de B15 à P30", test_trajectoire_B15_P30);
+    CU_add_test(suite, "Trajectoire de D30 à B15", test_trajectoire_D30_B15);
+    CU_add_test(suite, "Trajectoire de S11 à B15", test_trajectoire_S11_B15);
+    
     if (NULL == CU_add_test(suite, "test parse stock good request", test_parse_stock_good_request)) {
         CU_cleanup_registry();
         return CU_get_error();
@@ -677,6 +806,65 @@ int main() {
         CU_cleanup_registry();
         return CU_get_error();
     }
+
+    if (NULL == CU_add_test(suite, "test_remove_first_waypoint_success", test_remove_first_waypoint_success)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
+    if (NULL == CU_add_test(suite, "test_remove_first_waypoint_empty", test_remove_first_waypoint_empty)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
+    if (NULL == CU_add_test(suite, "test_add_waypoint_success", test_add_waypoint_success)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
+    if (NULL == CU_add_test(suite, "test_add_waypoint_empty_list", test_add_waypoint_empty_list)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
+    if (NULL == CU_add_test(suite, "test_remove_first_item_success", test_remove_first_item_success)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
+    if (NULL == CU_add_test(suite, "test_remove_first_item_empty", test_remove_first_item_empty)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
+    if (NULL == CU_add_test(suite, "test_get_index_of_waypoint_P", test_get_index_of_waypoint_P)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
+    if (NULL == CU_add_test(suite, "test_get_index_of_waypoint_B", test_get_index_of_waypoint_B)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
+    if (NULL == CU_add_test(suite, "test_get_index_of_waypoint_S", test_get_index_of_waypoint_S)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
+    if (NULL == CU_add_test(suite, "test_get_index_of_waypoint_DM", test_get_index_of_waypoint_DM)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
+    if (NULL == CU_add_test(suite, "test_get_index_of_waypoint_invalid", test_get_index_of_waypoint_invalid)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+    
+    CU_add_test(suite, "test_get_current_and_final_pos_B", test_get_current_and_final_pos_B);
+    CU_add_test(suite, "test_get_current_and_final_pos_P", test_get_current_and_final_pos_P);
+    CU_add_test(suite, "test_get_current_and_final_pos_S", test_get_current_and_final_pos_S);
 
     CU_basic_set_mode(CU_BRM_VERBOSE);
     CU_basic_run_tests();
