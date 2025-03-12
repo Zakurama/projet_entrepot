@@ -10,6 +10,7 @@
 
 #define MAXOCTETS   500
 #define MAXCLIENTS  100
+#define DEFAULT_OK_MESSAGE "DONE"
 
 void init_tcp_socket(int *sd, char *ip, u_int16_t port,int is_server);
 int accept_client(int server_sd);

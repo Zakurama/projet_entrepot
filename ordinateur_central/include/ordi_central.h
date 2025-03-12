@@ -19,6 +19,7 @@
 #include <sys/mman.h>
 
 #include "waypoints_generation.h"
+#include "tcp.h"
 
 #define NB_MAX_ROBOT 10
 #define DEFAULT_NB_COLONNES 4
@@ -75,4 +76,6 @@ int remove_first_item_of_robot(Robot *robot);
 void get_current_and_final_pos(Robot* robot,int no,char current_pos[SIZE_POS],char pos_finale[SIZE_POS],char type_final_pos,int nb_colonnes,int nb_bac);
 int get_index_of_waypoint(char type_pos,int no_pos,int nb_colonnes,int nb_bac);
 void free_mutex(char type_pos,int no_mutex,sem_t* sem_bac[NB_MAX_BAC],sem_t* sem_parking[NB_MAX_ROBOT],sem_t* sem_lignes[NB_MAX_LIGNES],sem_t* sem_colonneNord[2*NB_MAX_LIGNES],sem_t* sem_colonneSud[2*NB_MAX_LIGNES]);
+void generer_trame_robot_waypoints(char buffer[MAXOCTETS],char waypoints[MAX_WAYPOINTS][SIZE_POS], Liste_pos_waypoints * liste_waypoints);
+
 #endif

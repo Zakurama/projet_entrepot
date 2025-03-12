@@ -1,4 +1,3 @@
-#include "tcp.h"
 #include "utils.h"
 #include "ordi_central.h"
 
@@ -503,6 +502,10 @@ void gestion_communication_robot(int no, int se, int *nb_robots){
 
     while(1){
 
+        // BUFFER
+        char buffer_emission[MAXOCTETS];
+        char buffer_reception[MAXOCTETS];
+
         // Holder des waypoints
         char waypoints[MAX_WAYPOINTS][SIZE_POS];
         for(int i = 0;i<MAX_WAYPOINTS;i++){
@@ -531,26 +534,26 @@ void gestion_communication_robot(int no, int se, int *nb_robots){
         }
         CHECK(sem_post(sem_memoire_robot[no]),"sem_post(sem_memoire_robot)");
 
-        //TESTS : On affiche les waypoints extrait de la mémoire partagée
+        // On convertit les waypoints en position et en chaine de caractère pour l'envoi
+        // Format de la trame : "x1,y1;x2,y2;...\n"
         CHECK(sem_wait(mutex_ecran),"sem_wait(mutex_ecran)");
         printf("AFFICHAGE DES WAYPOINTS du robot %d\n",no);
-        Point point_coord;
-        for(int i =0;i<MAX_WAYPOINTS;i++){
-            if(!strcmp(waypoints[i],"\0")){
-                break;
-            }
-            find_waypoint(liste_waypoints, waypoints[i], &point_coord);
-            printf(" %s (%f,%f) ",waypoints[i],point_coord.x,point_coord.y);
-        }
-        printf("\n");
+        generer_trame_robot_waypoints(buffer_emission,waypoints,liste_waypoints);
         printf("FIN DE L'AFFICHAGE DES WAYPOINTS du robot %d\n",no);
         CHECK(sem_post(mutex_ecran),"sem_post(mutex_ecran)");
 
-        // On envoie les waypoints au robot
-        // TODO
+        // On envoie la trame
+        send_message(se,buffer_emission);
 
         // On attend le retour du robot
-        // TODO
+        recev_message(se,buffer_reception);
+
+        if(strcmp(buffer_reception,DEFAULT_OK_MESSAGE)!=0){
+            // Le robot n'est pas arrivé
+            return;
+        }
+
+        // Le robot est bien arrivé
 
         // Libèration des mutex 
         // On libère d'abord la mutex de la position initiale (qui n'apparait pas dans la liste des waypoints)

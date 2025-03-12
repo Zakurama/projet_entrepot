@@ -695,6 +695,24 @@ void test_get_current_and_final_pos_S() {
     CU_ASSERT_STRING_EQUAL(final, "S7");  // robot.positions[0] = 7
 }
 
+void test_generer_trame_robot_waypoints() {
+    char buffer[MAXOCTETS] = {0};
+
+    // Initialisation de la liste des waypoints
+    Liste_pos_waypoints liste_waypoints = {
+        .pos_waypoints = { {10.5, 20.7}, {30.2, 40.9}, {50.3, 60.1} },
+        .name_waypoints = { "A", "B", "C" }
+    };
+
+    // Définition des waypoints à tester
+    char waypoints[MAX_WAYPOINTS][SIZE_POS] = { "A", "C", "" };
+
+    // Appeler la fonction de génération de trame
+    generer_trame_robot_waypoints(buffer, waypoints, &liste_waypoints);
+    // Vérifier la sortie attendue (arrondie à des entiers)
+    CU_ASSERT_STRING_EQUAL(buffer, "10,20;50,60\n");
+}
+
 int main() {
     CU_initialize_registry();
 
@@ -865,6 +883,7 @@ int main() {
     CU_add_test(suite, "test_get_current_and_final_pos_B", test_get_current_and_final_pos_B);
     CU_add_test(suite, "test_get_current_and_final_pos_P", test_get_current_and_final_pos_P);
     CU_add_test(suite, "test_get_current_and_final_pos_S", test_get_current_and_final_pos_S);
+    CU_add_test(suite, "test_generer_trame_robot_waypoints", test_generer_trame_robot_waypoints);
 
     CU_basic_set_mode(CU_BRM_VERBOSE);
     CU_basic_run_tests();

@@ -536,6 +536,31 @@ int remove_first_item_of_robot(Robot *robot) {
     return 0;
 }
 
+void generer_trame_robot_waypoints(char buffer[MAXOCTETS],char waypoints[MAX_WAYPOINTS][SIZE_POS], Liste_pos_waypoints * liste_waypoints) {
+    int offset = 0;
+    
+    Point point_coord;
+    for (int i = 0; i < MAX_WAYPOINTS; i++) {
+        if (!strcmp(waypoints[i], "\0")) {
+            break;
+        }
+        find_waypoint(liste_waypoints, waypoints[i], &point_coord);
+        printf(" %s (%.2f,%.2f) ",waypoints[i],point_coord.x,point_coord.y);
+        offset += snprintf(buffer + offset, MAXOCTETS - offset, "%d,%d;",(int)point_coord.x,(int)point_coord.y);
+        
+        if (offset >= MAXOCTETS - 1) { // Vérifier si on dépasse la taille du buffer
+            fprintf(stderr, "Buffer overflow, certains waypoints peuvent être perdus\n");
+            break;
+        }
+    }
+    printf("\n");
+    if (offset > 0) {
+        buffer[offset - 1] = '\n';
+    } else {
+        buffer[0] = '\0';
+    }
+}
+
 // message format: "itemName1;N_X.Y,N_X.Y,.../itemName2;N_X.Y,..
 char *parse_stock(const char *request, int max_elements, int *L_n[max_elements], int *L_x[max_elements], int *L_y[max_elements], char *item_names[max_elements], int count[max_elements], int *nb_items_request){
     char temp[strlen(request) + 1];
