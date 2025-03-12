@@ -577,6 +577,124 @@ void test_name_waypoints_creation(void){
     CU_ASSERT_STRING_EQUAL(buffer, "M3M6M9M12M15M18D3D6D9D12D15D18S7S8S13S14S19S20B3B9P15P18");   
 }   
 
+void test_remove_first_waypoint_success() {
+    Robot robot = {
+        .waypoints = {
+            "WP1", "WP2", "WP3", "", "", "", "", "", "", ""
+        }
+    };
+
+    int result = remove_first_waypoint_of_robot(&robot);
+    
+    CU_ASSERT_EQUAL(result, 0);
+    CU_ASSERT_STRING_EQUAL(robot.waypoints[0], "WP2");
+    CU_ASSERT_STRING_EQUAL(robot.waypoints[1], "WP3");
+    CU_ASSERT_STRING_EQUAL(robot.waypoints[2], "");
+}
+
+void test_remove_first_waypoint_empty() {
+    Robot robot = { .waypoints = { "", "", "", "", "", "", "", "", "", "" } };
+
+    int result = remove_first_waypoint_of_robot(&robot);
+    
+    CU_ASSERT_EQUAL(result, -1);
+    CU_ASSERT_STRING_EQUAL(robot.waypoints[0], "");
+}
+
+void test_add_waypoint_success() {
+    Robot robot = { .waypoints = { "WP1", "WP2", "", "", "", "", "", "", "", "" } };
+
+    int result = add_waypoint(&robot, "WP3");
+    
+    CU_ASSERT_EQUAL(result, 0);
+    CU_ASSERT_STRING_EQUAL(robot.waypoints[2], "WP3");
+}
+
+void test_add_waypoint_empty_list() {
+    Robot robot = { .waypoints = { "", "", "", "", "", "", "", "", "", "" } };
+
+    int result = add_waypoint(&robot, "WP1");
+
+    CU_ASSERT_EQUAL(result, 0);
+    CU_ASSERT_STRING_EQUAL(robot.waypoints[0], "WP1");
+}
+
+void test_remove_first_item_success() {
+    Robot robot = {
+        .item_name = { "Item1", "Item2", "Item3", "", "", "", "", "", "", "" },
+        .positions = { 1, 2, 3, 0, 0, 0, 0, 0, 0, 0 },
+        .quantities = { 10, 20, 30, 0, 0, 0, 0, 0, 0, 0 }
+    };
+
+    int result = remove_first_item_of_robot(&robot);
+
+    CU_ASSERT_EQUAL(result, 0);
+    CU_ASSERT_STRING_EQUAL(robot.item_name[0], "Item2");
+    CU_ASSERT_STRING_EQUAL(robot.item_name[1], "Item3");
+    CU_ASSERT_EQUAL(robot.positions[0], 2);
+    CU_ASSERT_EQUAL(robot.quantities[0], 20);
+}
+
+void test_remove_first_item_empty() {
+    Robot robot = { .item_name = { "", "", "", "", "", "", "", "", "", "" } };
+
+    int result = remove_first_item_of_robot(&robot);
+
+    CU_ASSERT_EQUAL(result, -1);
+    CU_ASSERT_STRING_EQUAL(robot.item_name[0], "");
+}
+
+void test_get_index_of_waypoint_P() {
+    CU_ASSERT_EQUAL(get_index_of_waypoint('P', 15, 4, 3), 15 / (4 + 1) - 1 - 2 * 3);
+    CU_ASSERT_EQUAL(get_index_of_waypoint('P', 25, 5, 2), 25 / (5 + 1) - 1 - 2 * 2);
+}
+
+void test_get_index_of_waypoint_B() {
+    CU_ASSERT_EQUAL(get_index_of_waypoint('B', 12, 3, 2), (12 / (3 + 1) - 1) / 2);
+    CU_ASSERT_EQUAL(get_index_of_waypoint('B', 20, 4, 3), (20 / (4 + 1) - 1) / 2);
+}
+
+void test_get_index_of_waypoint_S() {
+    CU_ASSERT_EQUAL(get_index_of_waypoint('S', 18, 4, 3), 18 / (2 * (4 + 1)) - 1);
+    CU_ASSERT_EQUAL(get_index_of_waypoint('S', 30, 5, 2), 30 / (2 * (5 + 1)) - 1);
+}
+
+void test_get_index_of_waypoint_DM() {
+    CU_ASSERT_EQUAL(get_index_of_waypoint('D', 16, 4, 3), 16 / (4 + 1) - 1);
+    CU_ASSERT_EQUAL(get_index_of_waypoint('M', 22, 5, 2), 22 / (5 + 1) - 1);
+}
+
+void test_get_index_of_waypoint_invalid() {
+    CU_ASSERT_EQUAL(get_index_of_waypoint('X', 10, 3, 2), -1);
+}
+
+void test_get_current_and_final_pos_B() {
+    Robot robot = {.current_pos = "A1"};
+    char current[SIZE_POS], final[SIZE_POS];
+
+    get_current_and_final_pos(&robot, 2, current, final, 'B', 4, 3);
+    CU_ASSERT_STRING_EQUAL(current, "A1");
+    CU_ASSERT_STRING_EQUAL(final, "B25");
+}
+
+void test_get_current_and_final_pos_P() {
+    Robot robot = {.current_pos = "C3"};
+    char current[SIZE_POS], final[SIZE_POS];
+
+    get_current_and_final_pos(&robot, 3, current, final, 'P', 5, 2);
+    CU_ASSERT_STRING_EQUAL(current, "C3");
+    CU_ASSERT_STRING_EQUAL(final, "P48");
+}
+
+void test_get_current_and_final_pos_S() {
+    Robot robot = {.current_pos = "D4", .positions = {7}};
+    char current[SIZE_POS], final[SIZE_POS];
+
+    get_current_and_final_pos(&robot, 1, current, final, 'S', 3, 2);
+    CU_ASSERT_STRING_EQUAL(current, "D4");
+    CU_ASSERT_STRING_EQUAL(final, "S7");  // robot.positions[0] = 7
+}
+
 int main() {
     CU_initialize_registry();
 
@@ -688,6 +806,65 @@ int main() {
         CU_cleanup_registry();
         return CU_get_error();
     }
+
+    if (NULL == CU_add_test(suite, "test_remove_first_waypoint_success", test_remove_first_waypoint_success)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
+    if (NULL == CU_add_test(suite, "test_remove_first_waypoint_empty", test_remove_first_waypoint_empty)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
+    if (NULL == CU_add_test(suite, "test_add_waypoint_success", test_add_waypoint_success)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
+    if (NULL == CU_add_test(suite, "test_add_waypoint_empty_list", test_add_waypoint_empty_list)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
+    if (NULL == CU_add_test(suite, "test_remove_first_item_success", test_remove_first_item_success)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
+    if (NULL == CU_add_test(suite, "test_remove_first_item_empty", test_remove_first_item_empty)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
+    if (NULL == CU_add_test(suite, "test_get_index_of_waypoint_P", test_get_index_of_waypoint_P)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
+    if (NULL == CU_add_test(suite, "test_get_index_of_waypoint_B", test_get_index_of_waypoint_B)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
+    if (NULL == CU_add_test(suite, "test_get_index_of_waypoint_S", test_get_index_of_waypoint_S)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
+    if (NULL == CU_add_test(suite, "test_get_index_of_waypoint_DM", test_get_index_of_waypoint_DM)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+
+    if (NULL == CU_add_test(suite, "test_get_index_of_waypoint_invalid", test_get_index_of_waypoint_invalid)) {
+        CU_cleanup_registry();
+        return CU_get_error();
+    }
+    
+    CU_add_test(suite, "test_get_current_and_final_pos_B", test_get_current_and_final_pos_B);
+    CU_add_test(suite, "test_get_current_and_final_pos_P", test_get_current_and_final_pos_P);
+    CU_add_test(suite, "test_get_current_and_final_pos_S", test_get_current_and_final_pos_S);
 
     CU_basic_set_mode(CU_BRM_VERBOSE);
     CU_basic_run_tests();

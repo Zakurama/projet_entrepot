@@ -378,9 +378,8 @@ int remove_first_waypoint_of_robot(Robot *robot) {
     return 0;
 }
 
-void get_current_and_final_pos(Robot* robot,int no,sem_t* sem_robot,char current_pos[SIZE_POS],char pos_finale[SIZE_POS],char type_final_pos,int nb_colonnes,int nb_bac){
+void get_current_and_final_pos(Robot* robot,int no,char current_pos[SIZE_POS],char pos_finale[SIZE_POS],char type_final_pos,int nb_colonnes,int nb_bac){
     
-    CHECK(sem_wait(sem_robot),"sem_wait(sem_memoire_robot)");
     if (type_final_pos == 'B'){
         strcpy(current_pos,robot->current_pos);
         sprintf(pos_finale, "B%d",(nb_colonnes+1)*(2*no+1)%(nb_bac*2*(nb_colonnes+1)));
@@ -393,8 +392,6 @@ void get_current_and_final_pos(Robot* robot,int no,sem_t* sem_robot,char current
         strcpy(current_pos,robot->current_pos);
         sprintf(pos_finale, "S%d",robot->positions[0]);
     }
-    CHECK(sem_post(sem_robot),"sem_post(sem_memoire_robot)");
-
 }
 
 int get_index_of_waypoint(char type_pos,int no_pos,int nb_colonnes,int nb_bac){
@@ -518,10 +515,11 @@ void generate_waypoints(const char current_pos[SIZE_POS],const char pos_finale[S
     }
 }
 
-void remove_first_item_of_robot(Robot *robot) {
+int remove_first_item_of_robot(Robot *robot) {
+    
     if (robot->item_name[0][0] == '\0') {
-        printf("No item to remove!\n");
-        return;
+        fprintf(stderr,"No item to remove!\n");
+        return-1;
     }
     
     for (int i = 0; i < MAX_WAYPOINTS - 1; i++) {
@@ -534,6 +532,8 @@ void remove_first_item_of_robot(Robot *robot) {
     robot->item_name[MAX_WAYPOINTS - 1][0] = '\0';
     robot->positions[MAX_WAYPOINTS - 1] = 0;
     robot->quantities[MAX_WAYPOINTS - 1] = 0;
+
+    return 0;
 }
 
 // message format: "itemName1;N_X.Y,N_X.Y,.../itemName2;N_X.Y,..

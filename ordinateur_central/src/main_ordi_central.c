@@ -424,7 +424,10 @@ void gestionnaire_traj_robot(int no){
             continue;
         }
         // Le robot doit aller chercher l'article
-        get_current_and_final_pos(robots[no],no,sem_memoire_robot[no],current_pos,pos_finale,'S',*nb_colonnes,DEFAULT_NB_BACS);
+        CHECK(sem_wait(sem_memoire_robot[no]),"sem_wait(sem_memoire_robot)");
+        get_current_and_final_pos(robots[no],no,current_pos,pos_finale,'S',*nb_colonnes,DEFAULT_NB_BACS);
+        CHECK(sem_post(sem_memoire_robot[no]),"sem_post(sem_memoire_robot)");
+        
         printf("Position initiale :%s, position finale %s\n",current_pos,pos_finale);
         // On vérifie si on ne se trouve pas déjà au bon endroit
         if(strcmp(current_pos,pos_finale)!=0){
@@ -443,7 +446,7 @@ void gestionnaire_traj_robot(int no){
             // On peut porter tout d'un coup
             robots[no]->hold_items = robots[no]->hold_items + robots[no]->hold_items;
             // On peut supprimer l'article de la liste
-            remove_first_item_of_robot(robots[no]);
+            CHECK_0(remove_first_item_of_robot(robots[no]),"Erreur dans remove_first_item_of_robot\n");
         }
         CHECK(sem_post(sem_memoire_robot[no]),"sem_post(sem_memoire_robot)");
 
@@ -459,7 +462,9 @@ void gestionnaire_traj_robot(int no){
         }
 
         // On doit aller au bac
-        get_current_and_final_pos(robots[no],no,sem_memoire_robot[no],current_pos,pos_finale,'B',*nb_colonnes,DEFAULT_NB_BACS);
+        CHECK(sem_wait(sem_memoire_robot[no]),"sem_wait(sem_memoire_robot)");
+        get_current_and_final_pos(robots[no],no,current_pos,pos_finale,'B',*nb_colonnes,DEFAULT_NB_BACS);
+        CHECK(sem_post(sem_memoire_robot[no]),"sem_post(sem_memoire_robot)");
         generate_waypoints(current_pos,pos_finale,robots[no],sem_memoire_robot[no],sem_bac,sem_parking,sem_lignes,sem_colonneNord,sem_colonneSud,*nb_lignes,*nb_colonnes,DEFAULT_NB_BACS);
 
         // On vide dans le bac
@@ -468,7 +473,9 @@ void gestionnaire_traj_robot(int no){
         CHECK(sem_post(sem_memoire_robot[no]),"sem_post(sem_memoire_robot)");
 
         // On retourne au parking
-        get_current_and_final_pos(robots[no],no,sem_memoire_robot[no],current_pos,pos_finale,'P',*nb_colonnes,DEFAULT_NB_BACS);
+        CHECK(sem_wait(sem_memoire_robot[no]),"sem_wait(sem_memoire_robot)");
+        get_current_and_final_pos(robots[no],no,current_pos,pos_finale,'P',*nb_colonnes,DEFAULT_NB_BACS);
+        CHECK(sem_post(sem_memoire_robot[no]),"sem_post(sem_memoire_robot)");
         generate_waypoints(current_pos,pos_finale,robots[no],sem_memoire_robot[no],sem_bac,sem_parking,sem_lignes,sem_colonneNord,sem_colonneSud,*nb_lignes,*nb_colonnes,DEFAULT_NB_BACS);
     }
 }

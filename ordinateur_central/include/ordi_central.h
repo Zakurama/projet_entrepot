@@ -71,8 +71,8 @@ void gestion_flotte(int *nb_robots, char *ip);
 int remove_first_waypoint_of_robot(Robot *robot);
 int add_waypoint(Robot *robot, const char *waypoint);
 void generate_waypoints(const char current_pos[SIZE_POS],const char pos_finale[SIZE_POS],Robot* memoire_robot, sem_t* sem_robot,sem_t* sem_bac[NB_MAX_BAC],sem_t* sem_parking[NB_MAX_ROBOT],sem_t* sem_lignes[NB_MAX_LIGNES],sem_t* sem_colonneNord[2*NB_MAX_LIGNES],sem_t* sem_colonneSud[2*NB_MAX_LIGNES],int nb_lignes, int nb_colonnes,int nb_bac);
-void remove_first_item_of_robot(Robot *robot);
-void get_current_and_final_pos(Robot* robot,int no,sem_t* sem_robot,char current_pos[SIZE_POS],char pos_finale[SIZE_POS],char type_final_pos,int nb_colonnes,int nb_bac);
+int remove_first_item_of_robot(Robot *robot);
+void get_current_and_final_pos(Robot* robot,int no,char current_pos[SIZE_POS],char pos_finale[SIZE_POS],char type_final_pos,int nb_colonnes,int nb_bac);
 int get_index_of_waypoint(char type_pos,int no_pos,int nb_colonnes,int nb_bac);
 void free_mutex(char type_pos,int no_mutex,sem_t* sem_bac[NB_MAX_BAC],sem_t* sem_parking[NB_MAX_ROBOT],sem_t* sem_lignes[NB_MAX_LIGNES],sem_t* sem_colonneNord[2*NB_MAX_LIGNES],sem_t* sem_colonneSud[2*NB_MAX_LIGNES]);
 #endif
