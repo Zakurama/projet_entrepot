@@ -92,7 +92,7 @@ void waypoints_creation (Liste_pos_waypoints* liste_waypoints, Point hedge3, Poi
 
 int find_waypoint(const Liste_pos_waypoints *liste, const char *name, Point *result) {
     for (int i = 0; i < MAX_WAYPOINTS; i++) {
-        if (strcmp(liste->name_waypoints[i], name) == 0) {
+        if (liste->name_waypoints[i][0] != '\0' && strcmp(liste->name_waypoints[i], name) == 0) {
             *result = liste->pos_waypoints[i];
             return 1; // Trouvé
         }

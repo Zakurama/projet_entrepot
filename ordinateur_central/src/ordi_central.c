@@ -220,11 +220,11 @@ char* convert_request_strings_to_lists(char *buffer_reception_ID_articles, char 
     return NULL;
 }
 
-void update_shared_memory_stock(Robot *robot, Item_selected selected_item, int index_pos,int nb_colonnes) {
+int update_shared_memory_stock(Robot *robot, Item_selected selected_item, int index_pos,int nb_colonnes) {
     // Vérifier si index_pos est valide
     if (index_pos < 0 || index_pos >= selected_item.count) {
-        printf("Erreur : index_pos hors limites.\n");
-        return;
+        fprintf(stderr, "Erreur : index_pos hors limites.\n");
+        return -1;
     }
 
     // Trouver le prochain indice disponible pour un nouvel élément
@@ -235,8 +235,8 @@ void update_shared_memory_stock(Robot *robot, Item_selected selected_item, int i
 
     // Vérifier s'il y a de la place pour ajouter un nouvel élément
     if (idx == MAX_WAYPOINTS) {
-        printf("Erreur : Plus de place disponible dans la structure Robot.\n");
-        return;
+        fprintf(stderr, "Erreur : Plus de place disponible dans la structure Robot.\n");
+        return -1;
     }
 
     // Copier le nom de l'article (assurez-vous que la taille de robot->item_name[idx] est suffisante)
@@ -248,6 +248,8 @@ void update_shared_memory_stock(Robot *robot, Item_selected selected_item, int i
 
     // Copier la quantité
     robot->quantities[idx] = selected_item.quantities[index_pos];
+
+    return 0;
 }
 
 int choose_items_stocks(char *item_names_requested[], int L_n_requested[], int count_requested,char *item_names_stock[], int *L_n_stock[], int *L_x_stock[], int *L_y_stock[], int count_stock[],Item_selected selected_items[]) {
@@ -360,10 +362,10 @@ int add_waypoint(Robot *robot, const char *waypoint) {
     return 0;
 }
 
-void remove_first_waypoint_of_robot(Robot *robot) {
+int remove_first_waypoint_of_robot(Robot *robot) {
     if (robot->waypoints[0][0] == '\0') {
-        printf("No waypoints to remove!\n");
-        return;
+        fprintf(stderr,"No waypoints to remove!\n");
+        return -1;
     }
     
     for (int i = 0; i < MAX_WAYPOINTS - 1; i++) {
@@ -372,6 +374,8 @@ void remove_first_waypoint_of_robot(Robot *robot) {
     
     // Vider le dernier élément
     robot->waypoints[MAX_WAYPOINTS - 1][0] = '\0';
+
+    return 0;
 }
 
 void get_current_and_final_pos(Robot* robot,int no,sem_t* sem_robot,char current_pos[SIZE_POS],char pos_finale[SIZE_POS],char type_final_pos,int nb_colonnes,int nb_bac){

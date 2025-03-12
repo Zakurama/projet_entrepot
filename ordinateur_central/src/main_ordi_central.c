@@ -348,7 +348,7 @@ void gestionnaire_inventaire(int client_sd){
             for (int j = 0;j<selected_items[i].count;j++){
                 // On met à jour sa mémoire partagée
                 CHECK(sem_wait(sem_memoire_robot[ID_robot]),"sem_wait(sem_memoire_robot)");
-                update_shared_memory_stock(robots[ID_robot],selected_items[i],j,*nb_colonnes);
+                CHECK_0(update_shared_memory_stock(robots[ID_robot],selected_items[i],j,*nb_colonnes),"Erreur dans update_shared_memory_stock\n");
                 CHECK(sem_post(sem_memoire_robot[ID_robot]),"sem_post(sem_memoire_robot)");
                 ID_robot = (ID_robot + 1) % (*nb_robots); // Pour l'instant pas de choix optimal du robot, on prend juste à son tour les robots
             }
@@ -519,7 +519,7 @@ void gestion_communication_robot(int no, int se, int *nb_robots){
         while (strcmp(robots[no]->waypoints[0],"\0")){
             strcpy(waypoints[i],robots[no]->waypoints[0]);
             // On supprime le waypoint de la mémoire partagée
-            remove_first_waypoint_of_robot(robots[no]);
+            CHECK_0(remove_first_waypoint_of_robot(robots[no]),"Erreur dans remove_first_waypoint_of_robot\n");
             i++;
         }
         CHECK(sem_post(sem_memoire_robot[no]),"sem_post(sem_memoire_robot)");
