@@ -16,6 +16,13 @@
 //-----------------------------------------------------------------//
 // Objects
 //-----------------------------------------------------------------//
+enum Etat {
+    RECEPTION_WAYPOINTS,
+    INITIALISATION_TRAJ,
+    EXECUTION_TRAJ,
+    ENVOI_FIN,
+};
+
 MeGyro gyro;
 
 struct Point{
@@ -108,8 +115,10 @@ struct Trajectoire{
 // Build global objects
 //-----------------------------------------------------------------//
 
+// Variable pour suivre l'état actuel
+Etat etat_actuel = RECEPTION_WAYPOINTS;
 Point_marvelmind marvel_pos = {.x = 0, .y = 0}; 
-struct Trajectoire trajectoire = {.Kx = 1, .Ky = 1,.waypoints = {{500, 0}, {500, 500}, {1000,500}}, .nb_waypoints = 3, .current_wp = 0,.x0=0,.Vx0 = 0,.xf = 0,.Vxf = 0,.y0=0,.Vy0 = 0,.yf = 0,.Vyf = 0,.t0 = 0, .tf = 10};
+struct Trajectoire trajectoire = {.Kx = 1, .Ky = 1,.waypoints = {{0,0}}, .nb_waypoints = 0, .current_wp = 0,.x0=0,.Vx0 = 0,.xf = 0,.Vxf = 0,.y0=0,.Vy0 = 0,.yf = 0,.Vyf = 0,.t0 = 0, .tf = 10};
 struct Robot robot = {.longueur=126, .largeur=84,.KM = 50., .pos = {0}, .theta=0, 0.};
 struct Motor motor_G = {.VA=18, .VB=31, .I1=34, .I2=35, .PWM=12,.pulse_par_tour = 8, .rapport_reduction = 46,.type_motor = "Gauche",0};
 struct Motor motor_D = {.VA=19, .VB=38, .I1=37, .I2=36, .PWM=8,.pulse_par_tour = 8, .rapport_reduction = 46,.type_motor = "Droit",0};
@@ -282,6 +291,7 @@ bool trajectoire_update(Trajectoire &trajectoire, Robot &robot, Point_marvelmind
 }
 
 void init_trajectoire(Trajectoire &trajectoire, Point_marvelmind marvel_pos, Robot &robot){
+  
   trajectoire.x0 = marvel_pos.x; 
   trajectoire.y0 = marvel_pos.y; 
   robot.pos.x = marvel_pos.x; 
@@ -395,6 +405,11 @@ int readmarvelmind (Point_marvelmind *marvel_pos){
   return -1;
 }
 
+//-----------------------------------------------------------------//
+// Rotation
+//-----------------------------------------------------------------//
+
+
 void rotation_trigo(float voltage, struct Motor &right_motor, struct Motor &left_motor){
   motor_setVoltage(voltage, right_motor);
   motor_setVoltage(-voltage, left_motor);
@@ -487,6 +502,57 @@ double get_offset_gyroscope_angle(struct Motor &right_motor, struct Motor &left_
   return compute_angle(point1, point2);
 }
 
+
+//-----------------------------------------------------------------//
+// Waypoints Initialisation
+//-----------------------------------------------------------------//
+
+void resetTrajectoire(Trajectoire &trajectoire) {
+    trajectoire.nb_waypoints = 0;  // On remet le compteur à 0
+
+    for (int i = 0; i < MAX_WAYPOINTS; i++) {
+        trajectoire.waypoints[i] = {0, 0}; // On réinitialise chaque waypoint
+    }
+}
+ 
+void readwaypoints(struct Trajectoire &trajectoire) {
+    char buffer_waypoints[50];
+
+    Serial2.write("w\n");
+    int index = 0;
+    int parasiteCount = 3;  // Ignorer w\n\0
+
+    while (1) {    
+        if (Serial2.available()) { 
+            char c = Serial2.read();  
+            if (parasiteCount > 0) { 
+                parasiteCount--;  
+                continue;  
+            }
+            buffer_waypoints[index++] = c; 
+            if (c == '\n' || index >= 49) break;
+        }
+    }
+
+    buffer_waypoints[index] = '\0'; // Terminaison de la chaîne
+    Serial.println(buffer_waypoints); 
+
+    resetTrajectoire(trajectoire);  
+
+    char *token = strtok(buffer_waypoints, ";");
+    while (token != NULL) {
+        int x, y;
+        if (sscanf(token, "%d,%d", &x, &y) == 2) {
+            trajectoire.waypoints[trajectoire.nb_waypoints] = {x, y};
+            trajectoire.nb_waypoints++;
+        }
+        token = strtok(NULL, ";");
+    }
+
+    Serial.println("Nb waypoints : " + String(trajectoire.nb_waypoints)); 
+}
+
+
 //-----------------------------------------------------------------//
 // Arduino Functions
 //-----------------------------------------------------------------//
@@ -497,7 +563,7 @@ void setup() {
   Serial2.begin(115200); 
 
   marvelmindsetup(&marvel_pos); 
-  init_trajectoire(trajectoire, marvel_pos, robot); 
+  //init_trajectoire(trajectoire, marvel_pos, robot); 
   
   attachInterrupt(digitalPinToInterrupt(motor_D.VA), onRisingEdge_MD, RISING);
   attachInterrupt(digitalPinToInterrupt(motor_G.VA), onRisingEdge_MG, RISING);
@@ -506,55 +572,49 @@ void setup() {
 
 void loop() { 
 
-  long t = millis();
-  bool parcours_fini = false;
-  if (!parcours_fini and t > 0 and t < 20000) {
-    
-    readmarvelmind(&marvel_pos);
-     
-    parcours_fini = trajectoire_update(trajectoire, robot, marvel_pos);
-    //robot_updateVrWr(robot,trajectoire.dxr + trajectoire.Kx*(trajectoire.xr-marvel_pos.x),trajectoire.dyr + trajectoire.Ky*(trajectoire.yr-marvel_pos.y));
-    robot_updateVrWr(robot,robot.vx + trajectoire.Kx*(trajectoire.xr-marvel_pos.x), trajectoire.Ky*(robot.vy + trajectoire.yr-marvel_pos.y));
-    robot_updateVDrVGr(robot,robot.vr,robot.wr);
-    robot_updateVoltage(robot,robot.vitesse_d_r,robot.vitesse_g_r);
-    motor_setVoltage(robot.voltage_d, motor_D);
-    motor_setVoltage(robot.voltage_g, motor_G);
-    motor_updateSpeed(motor_D);
-    motor_updateSpeed(motor_G);
-    robot_updatePos(robot, motor_D,motor_G);
-  /*
-    Serial.println("Position robot marvel : ");
-    Serial.println("x : " + String(marvel_pos.x));
-    Serial.println("y : " + String(marvel_pos.y));
-    Serial.println("Trajectoire : ");
-    Serial.println("xr : " + String(trajectoire.xr));
-    Serial.println("yr : " + String(trajectoire.yr));
-    Serial.println("Position waypoint : ");
-    Serial.println("x : " + String(trajectoire.waypoints[trajectoire.current_wp].x));
-    Serial.println("y : " + String(trajectoire.waypoints[trajectoire.current_wp].y)); */
-    
-    Serial.println("theta : " + String(robot.theta));
-    Serial.println("v : " + String(robot.v));
-    Serial.println("w : " + String(robot.w));
-    Serial.println("vr : " + String(robot.vr));
-    Serial.println("wr : " + String(robot.wr));
+  switch (etat_actuel) {
+    case RECEPTION_WAYPOINTS:
+        readwaypoints(trajectoire);
+        etat_actuel = INITIALISATION_TRAJ;
+        break;
 
-    /*
-    Serial.println("motor_G voltage : "+ String(robot.voltage_g)); 
-    Serial.println("motor_D voltage : "+ String(robot.voltage_d)); 
-    Serial.print("motor_G_voltage:");
-    Serial.print(robot.voltage_g);
-    Serial.print(",");
-    Serial.print("motor_D_voltage:");
-    Serial.println(robot.voltage_d);
-    */
-    
-  }
-  else {
-    motor_setVoltage(0., motor_D);
-    motor_setVoltage(0., motor_G);
-  }
+    case INITIALISATION_TRAJ:
+        long t = millis();
+        trajectoire.t0 = t*0.001 ; 
+        trajectoire.tf += t*0.001;
+        init_trajectoire(trajectoire, marvel_pos, robot); 
+        etat_actuel = EXECUTION_TRAJ;
+        break;
 
-  motor_applyVoltage(motor_D); motor_applyVoltage(motor_G);
+    case EXECUTION_TRAJ:
+        t = millis();
+        bool parcours_fini = false;
+        readmarvelmind(&marvel_pos);
+        parcours_fini = trajectoire_update(trajectoire, robot, marvel_pos);
+        //robot_updateVrWr(robot,trajectoire.dxr + trajectoire.Kx*(trajectoire.xr-marvel_pos.x),trajectoire.dyr + trajectoire.Ky*(trajectoire.yr-marvel_pos.y));
+        robot_updateVrWr(robot,robot.vx + trajectoire.Kx*(trajectoire.xr-marvel_pos.x), trajectoire.Ky*(robot.vy + trajectoire.yr-marvel_pos.y));
+        robot_updateVDrVGr(robot,robot.vr,robot.wr);
+        robot_updateVoltage(robot,robot.vitesse_d_r,robot.vitesse_g_r);
+        motor_setVoltage(robot.voltage_d, motor_D);
+        motor_setVoltage(robot.voltage_g, motor_G);
+        motor_updateSpeed(motor_D);
+        motor_updateSpeed(motor_G);
+        robot_updatePos(robot, motor_D,motor_G);
+
+        motor_applyVoltage(motor_D);
+        motor_applyVoltage(motor_G);
+        if (parcours_fini and t > trajectoire.t0 + 10000 * trajectoire.nb_waypoints){
+          
+          motor_setVoltage(0., motor_D);
+          motor_setVoltage(0., motor_G);
+          etat_actuel = ENVOI_FIN;
+        }
+        
+        break;
+      case ENVOI_FIN:
+        Serial2.write("f\n"); 
+        etat_actuel = RECEPTION_WAYPOINTS;
+
+  }
 
 }
