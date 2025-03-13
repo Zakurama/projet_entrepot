@@ -3,19 +3,16 @@ INC_ROBOT = -I./include
 CFLAGS=-Wall
 CSTFLAGS =-DDEBUG 
 
-all  : build/send_marvelmind_pos.o build/marvelmind.o bin/marvelmind
+all  : build/central_pi.o build/marvelmind.o bin/marvelmind
 
 # Robot
 build/marvelmind.o: src/marvelmind.c
 	gcc -c $(CFLAGS) $(INC_ROBOT) $^ -o $@ -pthread
 
-build/rcv_marvelmind_pos.o: src/rcv_marvelmind_pos.c
+build/central_pi.o: src/central_pi.c
 	gcc -c $(CFLAGS) $(INC_ROBOT) $^ -o $@ -pthread
 
-build/send_marvelmind_pos.o: src/send_marvelmind_pos.c
-	gcc -c $(CFLAGS) $(INC_ROBOT) $^ -o $@ -pthread
-
-bin/marvelmind: build/marvelmind.o build/send_marvelmind_pos.o
+bin/marvelmind: build/marvelmind.o build/central_pi.o
 	gcc $(CFLAGS) $(INC_ROBOT) $^ -o $@ -pthread
 
 # Clean
