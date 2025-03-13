@@ -10,14 +10,17 @@ export PKG_CONFIG_PATH := /usr/lib/x86_64-linux-gnu/pkgconfig
 CUNIT_CFLAGS=$(shell PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) pkg-config --cflags cunit)
 CUNIT_LDFLAGS=$(shell PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) pkg-config --libs cunit)
 
-all : ordinateur_central/bin/ordinateur_central inventaire/bin/inventaire inventaire/bin/client libs
+all : ordinateur_central/bin/ordinateur_central inventaire/bin/inventaire inventaire/bin/client libs robot/bin/robot_simulation
 
 # Ordinateur Central
-ordinateur_central/bin/ordinateur_central: ordinateur_central/src/main_ordi_central.c $(LIB_UTILS)tcp.so
+ordinateur_central/bin/ordinateur_central: ordinateur_central/src/main_ordi_central.c ordinateur_central/build/waypoints_generation.o ordinateur_central/build/ordi_central.o inventaire/build/inventaire.o $(LIB_UTILS)tcp.so
 	gcc $(CFLAGS) $(INC_ORDI) $(INC_UTILS) $^ -o $@ 
 
 ordinateur_central/build/ordi_central.o: ordinateur_central/src/ordi_central.c
-	gcc -c $(CFLAGS) $(INC_ORDI) $^ -o $@
+	gcc -c $(CFLAGS) $(INC_ORDI) $(INC_UTILS) $(INC_INV) $^ -o $@
+
+ordinateur_central/build/waypoints_generation.o: ordinateur_central/src/waypoints_generation.c
+	gcc -c $(CFLAGS) $(INC_ORDI) $(INC_UTILS) $(INC_INV) $^ -o $@
 
 # Inventaire
 inventaire/bin/inventaire: inventaire/src/main_inventaire.c inventaire/build/inventaire.o $(LIB_UTILS)tcp.so
@@ -29,13 +32,17 @@ inventaire/bin/client : inventaire/src/client.c $(LIB_UTILS)tcp.so
 inventaire/build/inventaire.o: inventaire/src/inventaire.c
 	gcc -c $(CFLAGS) $(INC_INV) $(INC_UTILS) $^ -o $@
 
+# Robot
+robot/bin/robot_simulation: robot/src/robot_simulation.c
+	gcc $^ -o $@ 
+
 # Tests
 tests: tests/bin/test_ordinateur_central tests/bin/test_inventaire
 	./tests/bin/test_ordinateur_central
 	./tests/bin/test_inventaire
 
-tests/bin/test_ordinateur_central: tests/test_ordinateur_central.c ordinateur_central/build/ordi_central.o
-	gcc $(CFLAGS) $(INC_ORDI) $(CUNIT_CFLAGS) $^ -o $@ $(CUNIT_LDFLAGS)
+tests/bin/test_ordinateur_central: tests/test_ordinateur_central.c ordinateur_central/build/ordi_central.o ordinateur_central/build/waypoints_generation.o inventaire/build/inventaire.o $(LIB_UTILS)tcp.so
+	gcc $(CFLAGS) $(INC_ORDI) $(CUNIT_CFLAGS) $(INC_UTILS) $(INC_INV) $^ -o $@ $(CUNIT_LDFLAGS)
 
 tests/bin/test_inventaire: tests/test_inventaire.c inventaire/build/inventaire.o $(LIB_UTILS)tcp.so
 	gcc $(CFLAGS) $(INC_INV) $(CUNIT_CFLAGS) $(INC_UTILS) $^ -o $@ $(CUNIT_LDFLAGS)

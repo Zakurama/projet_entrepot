@@ -21,6 +21,8 @@ void init_tcp_socket(int *sd, char *ip, u_int16_t port,int is_server){
     }
     else{
         // Server
+        int opt = 1;
+        setsockopt(*sd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
         int erreur = bind(*sd, (const struct sockaddr *) &addr, addr_len);
         CHECK_ERROR(erreur, -1, "Erreur de bind !!! \n");
     }
