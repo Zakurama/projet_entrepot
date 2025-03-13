@@ -57,7 +57,7 @@ utils/build/tcp-fpic.o: utils/src/tcp.c
 	gcc -c -fPIC $(CFLAGS) $(INC_UTILS) $^ -o $@
 
 # Clean
-clean: clean_utils clean_ordi clean_inventaire clean_tests
+clean: clean_utils clean_ordi clean_inventaire clean_robot clean_tests 
 
 clean_tests:
 	rm -f tests/bin/*
@@ -70,3 +70,6 @@ clean_ordi:
 
 clean_inventaire:
 	rm -f inventaire/bin/* inventaire/build/*
+
+clean_robot:
+	rm -f robot/bin/* robot/build/*
