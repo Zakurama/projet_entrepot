@@ -422,7 +422,7 @@ int main(int argc, char *argv[])
             {
                 pthread_mutex_lock(&coordinates_mutex);
                 xm = -((double)position.x) ; // Envoi en négatif à cause du repère à l'envers
-                ym = -((double)position.y) ;
+                ym = ((double)position.y) ;
                 pthread_mutex_unlock(&coordinates_mutex);
                 if (!communication){
                     char buffer_send[20];
