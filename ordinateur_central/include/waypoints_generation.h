@@ -15,9 +15,9 @@
 #define SIZE_POS 10
 
 #define DEFAULT_HEDGE_2 (Point){0.0f, 0.0f} // x : mm, y : mm
-#define DEFAULT_HEDGE_3 (Point){-1781.0f, 0.0f} // x : mm, y : mm
-#define DEFAULT_HEDGE_4 (Point){-896.0f, -1107.0f} // x : mm, y : mm
-#define DEFAULT_HEDGE_5 (Point){-882.0f, 1103.0f} // x : mm, y : mm
+#define DEFAULT_HEDGE_3 (Point){-1773.0f, 0.0f} // x : mm, y : mm
+#define DEFAULT_HEDGE_4 (Point){-896.0f, 1108.0f} // x : mm, y : mm
+#define DEFAULT_HEDGE_5 (Point){-940.0f, -1050.0f} // x : mm, y : mm
 
 #define DEPOSIT_BIN_WIDTH 300 // mm
 
